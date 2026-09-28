@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+
 import {
   View,
   Text,
@@ -7,10 +8,29 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 
+import { auth, db } from './firebase';
+
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+} from 'firebase/firestore';
+
 export default function HomeScreen({ navigation }) {
+  const [loading, setLoading] = useState(true);
+
+  const [username, setUsername] = useState('مستخدم جديد');
+  const [userId, setUserId] = useState('');
   const [coins, setCoins] = useState(2000000);
+
   const [searchId, setSearchId] = useState('');
   const [micOn, setMicOn] = useState(true);
 
@@ -27,26 +47,210 @@ export default function HomeScreen({ navigation }) {
     },
   ]);
 
-  const searchUser = () => {
-    if (!searchId.trim()) {
-      Alert.alert('تنبيه', 'اكتب ID للبحث');
+  // --------------------------------
+  // تحميل بيانات المستخدم
+  // --------------------------------
+
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  const generateUserId = () => {
+    return String(Math.floor(1000000 + Math.random() * 9000000));
+  };
+
+  const createUniqueUserId = async () => {
+    let newId = generateUserId();
+
+    const usersRef = collection(db, 'users');
+
+    let q = query(
+      usersRef,
+      where('userId', '==', newId)
+    );
+
+    let result = await getDocs(q);
+
+    while (!result.empty) {
+      newId = generateUserId();
+
+      q = query(
+        usersRef,
+        where('userId', '==', newId)
+      );
+
+      result = await getDocs(q);
+    }
+
+    return newId;
+  };
+
+  const loadUser = async () => {
+    try {
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) {
+        Alert.alert(
+          'تنبيه',
+          'يجب تسجيل الدخول أولاً'
+        );
+
+        navigation.replace('Login');
+        return;
+      }
+
+      const userRef = doc(
+        db,
+        'users',
+        currentUser.uid
+      );
+
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+
+        setUsername(
+          data.username || 'مستخدم جديد'
+        );
+
+        setUserId(
+          data.userId || ''
+        );
+
+        setCoins(
+          typeof data.coins === 'number'
+            ? data.coins
+            : 2000000
+        );
+      } else {
+        const newUserId =
+          await createUniqueUserId();
+
+        const newUser = {
+          uid: currentUser.uid,
+
+          username:
+            currentUser.displayName ||
+            'مستخدم جديد',
+
+          email:
+            currentUser.email || '',
+
+          userId: newUserId,
+
+          coins: 2000000,
+
+          createdAt:
+            new Date().toISOString(),
+        };
+
+        await setDoc(
+          userRef,
+          newUser
+        );
+
+        setUsername(newUser.username);
+        setUserId(newUser.userId);
+        setCoins(2000000);
+      }
+    } catch (error) {
+      console.log(
+        'Load user error:',
+        error
+      );
+
+      Alert.alert(
+        'خطأ',
+        'حدث خطأ أثناء تحميل بيانات الحساب'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --------------------------------
+  // البحث عن مستخدم
+  // --------------------------------
+
+  const searchUser = async () => {
+    const id = searchId.trim();
+
+    if (!id) {
+      Alert.alert(
+        'تنبيه',
+        'اكتب ID المستخدم'
+      );
       return;
     }
 
-    Alert.alert(
-      'البحث',
-      `جاري البحث عن المستخدم صاحب ID: ${searchId}`
-    );
+    try {
+      const usersRef =
+        collection(db, 'users');
+
+      const q = query(
+        usersRef,
+        where('userId', '==', id)
+      );
+
+      const result =
+        await getDocs(q);
+
+      if (result.empty) {
+        Alert.alert(
+          'نتيجة البحث',
+          'لم يتم العثور على مستخدم بهذا ID'
+        );
+        return;
+      }
+
+      const userData =
+        result.docs[0].data();
+
+      Alert.alert(
+        'تم العثور على المستخدم',
+        `الاسم: ${
+          userData.username ||
+          'بدون اسم'
+        }\nID: ${
+          userData.userId
+        }`
+      );
+    } catch (error) {
+      console.log(
+        'Search error:',
+        error
+      );
+
+      Alert.alert(
+        'خطأ',
+        'حدث خطأ أثناء البحث'
+      );
+    }
   };
+
+  // --------------------------------
+  // إنشاء غرفة
+  // --------------------------------
 
   const createRoom = () => {
     const newRoom = {
-      id: String(1000 + rooms.length + 1),
-      name: `غرفتي الجديدة ${rooms.length + 1}`,
+      id: String(
+        1000 + rooms.length + 1
+      ),
+
+      name:
+        `غرفتي الجديدة ${
+          rooms.length + 1
+        }`,
+
       users: 1,
     };
 
-    setRooms([...rooms, newRoom]);
+    setRooms([
+      ...rooms,
+      newRoom,
+    ]);
 
     Alert.alert(
       'تم إنشاء الغرفة',
@@ -54,33 +258,88 @@ export default function HomeScreen({ navigation }) {
     );
   };
 
+  // --------------------------------
+  // دخول الغرفة
+  // --------------------------------
+
   const enterRoom = (room) => {
     Alert.alert(
       'دخول الغرفة',
-      `تم اختيار ${room.name}`
+      `تم اختيار ${room.name}\nID: ${room.id}`
     );
   };
 
-  const sendGift = (giftName, price) => {
+  // --------------------------------
+  // إرسال هدية
+  // --------------------------------
+
+  const sendGift = async (
+    giftName,
+    price
+  ) => {
     if (coins < price) {
-      Alert.alert('الرصيد غير كافٍ', 'لا تملك عملات كافية');
+      Alert.alert(
+        'الرصيد غير كافٍ',
+        'لا تملك عملات كافية'
+      );
       return;
     }
 
-    setCoins(coins - price);
+    try {
+      const newCoins =
+        coins - price;
 
-    Alert.alert(
-      'تم إرسال الهدية 🎁',
-      `${giftName}\nالسعر: ${price.toLocaleString()}`
-    );
+      const currentUser =
+        auth.currentUser;
+
+      if (!currentUser) {
+        return;
+      }
+
+      await updateDoc(
+        doc(
+          db,
+          'users',
+          currentUser.uid
+        ),
+        {
+          coins: newCoins,
+        }
+      );
+
+      setCoins(newCoins);
+
+      Alert.alert(
+        'تم إرسال الهدية 🎁',
+        `${giftName}\nالسعر: ${price.toLocaleString()}\nالرصيد المتبقي: ${newCoins.toLocaleString()}`
+      );
+    } catch (error) {
+      console.log(
+        'Gift error:',
+        error
+      );
+
+      Alert.alert(
+        'خطأ',
+        'تعذر إرسال الهدية'
+      );
+    }
   };
+
+  // --------------------------------
+  // متجر العملات
+  // --------------------------------
 
   const openStore = () => {
     Alert.alert(
       'متجر العملات 🪙',
-      'هذه نسخة تجريبية من المتجر.\nسيتم إضافة الشحن الحقيقي لاحقًا.'
+      'المتجر تجريبي حاليًا.\nسيتم إضافة الشحن الحقيقي لاحقًا.'
     );
   };
+
+  // --------------------------------
+  // متجر VIP
+  // --------------------------------
 
   const openVIP = () => {
     Alert.alert(
@@ -89,35 +348,90 @@ export default function HomeScreen({ navigation }) {
     );
   };
 
+  // --------------------------------
+  // تعديل الحساب
+  // --------------------------------
+
   const editProfile = () => {
     Alert.alert(
       'تعديل الحساب',
-      'سيتم إضافة تعديل الاسم والصورة والبيانات لاحقًا.'
+      `اسم الحساب الحالي:\n${username}\n\nID:\n${userId}\n\nسيتم إضافة تعديل الاسم والصورة لاحقًا.`
     );
   };
+
+  // --------------------------------
+  // تسجيل الخروج
+  // --------------------------------
+
+  const logout = async () => {
+    try {
+      await auth.signOut();
+
+      navigation.replace(
+        'Login'
+      );
+    } catch (error) {
+      Alert.alert(
+        'خطأ',
+        'تعذر تسجيل الخروج'
+      );
+    }
+  };
+
+  // --------------------------------
+  // شاشة التحميل
+  // --------------------------------
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator
+          size="large"
+        />
+
+        <Text style={styles.loadingText}>
+          جاري تحميل الحساب...
+        </Text>
+      </View>
+    );
+  }
+
+  // --------------------------------
+  // الواجهة الرئيسية
+  // --------------------------------
 
   return (
     <View style={styles.container}>
 
       <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
+        contentContainerStyle={
+          styles.content
+        }
+        showsVerticalScrollIndicator={
+          false
+        }
       >
 
         {/* الحساب */}
+
         <View style={styles.profileCard}>
+
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>👤</Text>
+            <Text style={styles.avatarText}>
+              👤
+            </Text>
           </View>
 
           <View style={styles.profileInfo}>
+
             <Text style={styles.username}>
-              مستخدم جديد
+              {username}
             </Text>
 
             <Text style={styles.userId}>
-              ID: 1000001
+              ID: {userId}
             </Text>
+
           </View>
 
           <TouchableOpacity
@@ -128,11 +442,15 @@ export default function HomeScreen({ navigation }) {
               تعديل
             </Text>
           </TouchableOpacity>
+
         </View>
 
         {/* العملات */}
+
         <View style={styles.coinsCard}>
+
           <View>
+
             <Text style={styles.smallTitle}>
               رصيد العملات
             </Text>
@@ -140,6 +458,7 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.coinsText}>
               🪙 {coins.toLocaleString()}
             </Text>
+
           </View>
 
           <TouchableOpacity
@@ -150,21 +469,28 @@ export default function HomeScreen({ navigation }) {
               شحن
             </Text>
           </TouchableOpacity>
+
         </View>
 
         {/* البحث */}
+
         <View style={styles.section}>
+
           <Text style={styles.sectionTitle}>
             🔎 البحث عن مستخدم
           </Text>
 
           <View style={styles.searchRow}>
+
             <TextInput
               style={styles.searchInput}
               value={searchId}
-              onChangeText={setSearchId}
+              onChangeText={
+                setSearchId
+              }
               placeholder="اكتب ID المستخدم"
               keyboardType="numeric"
+              textAlign="right"
             />
 
             <TouchableOpacity
@@ -175,17 +501,23 @@ export default function HomeScreen({ navigation }) {
                 بحث
               </Text>
             </TouchableOpacity>
+
           </View>
+
         </View>
 
         {/* أزرار الخدمات */}
+
         <View style={styles.buttonsGrid}>
 
           <TouchableOpacity
             style={styles.menuButton}
             onPress={createRoom}
           >
-            <Text style={styles.menuIcon}>➕</Text>
+            <Text style={styles.menuIcon}>
+              ➕
+            </Text>
+
             <Text style={styles.menuText}>
               إنشاء غرفة
             </Text>
@@ -193,14 +525,20 @@ export default function HomeScreen({ navigation }) {
 
           <TouchableOpacity
             style={styles.menuButton}
-            onPress={() => setMicOn(!micOn)}
+            onPress={() =>
+              setMicOn(!micOn)
+            }
           >
             <Text style={styles.menuIcon}>
-              {micOn ? '🎙️' : '🔇'}
+              {micOn
+                ? '🎙️'
+                : '🔇'}
             </Text>
 
             <Text style={styles.menuText}>
-              {micOn ? 'إغلاق المايك' : 'فتح المايك'}
+              {micOn
+                ? 'إغلاق المايك'
+                : 'فتح المايك'}
             </Text>
           </TouchableOpacity>
 
@@ -208,7 +546,9 @@ export default function HomeScreen({ navigation }) {
             style={styles.menuButton}
             onPress={openVIP}
           >
-            <Text style={styles.menuIcon}>👑</Text>
+            <Text style={styles.menuIcon}>
+              👑
+            </Text>
 
             <Text style={styles.menuText}>
               متجر VIP
@@ -219,12 +559,14 @@ export default function HomeScreen({ navigation }) {
             style={styles.menuButton}
             onPress={() =>
               Alert.alert(
-                'الهدايا',
-                'اختر نوع الهدية من القسم الموجود بالأسفل'
+                'الهدايا 🎁',
+                'اختر الهدية من قسم الهدايا بالأسفل'
               )
             }
           >
-            <Text style={styles.menuIcon}>🎁</Text>
+            <Text style={styles.menuIcon}>
+              🎁
+            </Text>
 
             <Text style={styles.menuText}>
               الهدايا
@@ -234,25 +576,35 @@ export default function HomeScreen({ navigation }) {
         </View>
 
         {/* الغرف */}
+
         <View style={styles.section}>
+
           <View style={styles.sectionHeader}>
+
             <Text style={styles.sectionTitle}>
               🎙️ الغرف الصوتية
             </Text>
 
-            <TouchableOpacity onPress={createRoom}>
+            <TouchableOpacity
+              onPress={createRoom}
+            >
               <Text style={styles.createText}>
                 + إنشاء
               </Text>
             </TouchableOpacity>
+
           </View>
 
           {rooms.map((room) => (
+
             <TouchableOpacity
               key={room.id}
               style={styles.roomCard}
-              onPress={() => enterRoom(room)}
+              onPress={() =>
+                enterRoom(room)
+              }
             >
+
               <View style={styles.roomIcon}>
                 <Text style={styles.roomIconText}>
                   🎙️
@@ -260,6 +612,7 @@ export default function HomeScreen({ navigation }) {
               </View>
 
               <View style={styles.roomInfo}>
+
                 <Text style={styles.roomName}>
                   {room.name}
                 </Text>
@@ -267,17 +620,23 @@ export default function HomeScreen({ navigation }) {
                 <Text style={styles.roomDetails}>
                   ID: {room.id} • 👥 {room.users}
                 </Text>
+
               </View>
 
               <Text style={styles.enterText}>
                 دخول
               </Text>
+
             </TouchableOpacity>
+
           ))}
+
         </View>
 
         {/* الهدايا */}
+
         <View style={styles.section}>
+
           <Text style={styles.sectionTitle}>
             🎁 الهدايا
           </Text>
@@ -290,12 +649,21 @@ export default function HomeScreen({ navigation }) {
 
             <TouchableOpacity
               style={styles.giftCard}
-              onPress={() => sendGift('وردة 🌹', 100)}
+              onPress={() =>
+                sendGift(
+                  'وردة 🌹',
+                  100
+                )
+              }
             >
-              <Text style={styles.giftIcon}>🌹</Text>
+              <Text style={styles.giftIcon}>
+                🌹
+              </Text>
+
               <Text style={styles.giftName}>
                 وردة
               </Text>
+
               <Text style={styles.giftPrice}>
                 100 🪙
               </Text>
@@ -303,12 +671,21 @@ export default function HomeScreen({ navigation }) {
 
             <TouchableOpacity
               style={styles.giftCard}
-              onPress={() => sendGift('قلب ❤️', 500)}
+              onPress={() =>
+                sendGift(
+                  'قلب ❤️',
+                  500
+                )
+              }
             >
-              <Text style={styles.giftIcon}>❤️</Text>
+              <Text style={styles.giftIcon}>
+                ❤️
+              </Text>
+
               <Text style={styles.giftName}>
                 قلب
               </Text>
+
               <Text style={styles.giftPrice}>
                 500 🪙
               </Text>
@@ -316,12 +693,21 @@ export default function HomeScreen({ navigation }) {
 
             <TouchableOpacity
               style={styles.giftCard}
-              onPress={() => sendGift('نجمة ⭐', 1000)}
+              onPress={() =>
+                sendGift(
+                  'نجمة ⭐',
+                  1000
+                )
+              }
             >
-              <Text style={styles.giftIcon}>⭐</Text>
+              <Text style={styles.giftIcon}>
+                ⭐
+              </Text>
+
               <Text style={styles.giftName}>
                 نجمة
               </Text>
+
               <Text style={styles.giftPrice}>
                 1,000 🪙
               </Text>
@@ -336,14 +722,19 @@ export default function HomeScreen({ navigation }) {
           <TouchableOpacity
             style={styles.specialGift}
             onPress={() =>
-              sendGift('هدية مخصصة 🎁', 5000)
+              sendGift(
+                'هدية مخصصة 🎁',
+                5000
+              )
             }
           >
+
             <Text style={styles.specialGiftIcon}>
               🎁
             </Text>
 
             <View>
+
               <Text style={styles.specialGiftTitle}>
                 هدية مخصصة
               </Text>
@@ -351,7 +742,9 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.specialGiftPrice}>
                 5,000 🪙
               </Text>
+
             </View>
+
           </TouchableOpacity>
 
           <Text style={styles.subTitle}>
@@ -361,14 +754,19 @@ export default function HomeScreen({ navigation }) {
           <TouchableOpacity
             style={styles.luckyGift}
             onPress={() =>
-              sendGift('هدية الحظ 🍀', 10000)
+              sendGift(
+                'هدية الحظ 🍀',
+                10000
+              )
             }
           >
+
             <Text style={styles.luckyIcon}>
               🍀
             </Text>
 
             <View>
+
               <Text style={styles.specialGiftTitle}>
                 هدية الحظ
               </Text>
@@ -376,12 +774,15 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.specialGiftPrice}>
                 10,000 🪙
               </Text>
+
             </View>
+
           </TouchableOpacity>
 
         </View>
 
         {/* المتاجر */}
+
         <View style={styles.section}>
 
           <Text style={styles.sectionTitle}>
@@ -392,6 +793,7 @@ export default function HomeScreen({ navigation }) {
             style={styles.storeButton}
             onPress={openVIP}
           >
+
             <Text style={styles.storeIcon}>
               👑
             </Text>
@@ -399,12 +801,14 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.storeText}>
               متجر VIP
             </Text>
+
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.storeButton}
             onPress={openStore}
           >
+
             <Text style={styles.storeIcon}>
               🪙
             </Text>
@@ -412,14 +816,16 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.storeText}>
               متجر شحن العملات
             </Text>
+
           </TouchableOpacity>
 
         </View>
 
         {/* تسجيل الخروج */}
+
         <TouchableOpacity
           style={styles.logoutButton}
-          onPress={() => navigation.replace('Login')}
+          onPress={logout}
         >
           <Text style={styles.logoutText}>
             تسجيل الخروج
@@ -432,10 +838,27 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
+// --------------------------------
+// Styles
+// --------------------------------
+
 const styles = StyleSheet.create({
+
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
   },
 
   content: {
@@ -623,127 +1046,4 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     backgroundColor: '#e9f3ff',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  roomIconText: {
-    fontSize: 24,
-  },
-
-  roomInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-
-  roomName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-
-  roomDetails: {
-    color: '#777',
-    marginTop: 5,
-  },
-
-  enterText: {
-    color: '#2196f3',
-    fontWeight: 'bold',
-  },
-
-  giftsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-
-  giftCard: {
-    width: '31%',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    alignItems: 'center',
-  },
-
-  giftIcon: {
-    fontSize: 30,
-    marginBottom: 7,
-  },
-
-  giftName: {
-    fontWeight: 'bold',
-  },
-
-  giftPrice: {
-    color: '#777',
-    marginTop: 4,
-    fontSize: 12,
-  },
-
-  specialGift: {
-    backgroundColor: '#fff',
-    borderRadius: 13,
-    padding: 15,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  specialGiftIcon: {
-    fontSize: 35,
-    marginRight: 15,
-  },
-
-  specialGiftTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-
-  specialGiftPrice: {
-    color: '#777',
-    marginTop: 5,
-  },
-
-  luckyGift: {
-    backgroundColor: '#fff',
-    borderRadius: 13,
-    padding: 15,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  luckyIcon: {
-    fontSize: 35,
-    marginRight: 15,
-  },
-
-  storeButton: {
-    backgroundColor: '#fff',
-    borderRadius: 13,
-    padding: 17,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-
-  storeIcon: {
-    fontSize: 27,
-    marginRight: 15,
-  },
-
-  storeText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-
-  logoutButton: {
-    backgroundColor: '#d32f2f',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-
-  logoutText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-});
+    j
