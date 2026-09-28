@@ -83,11 +83,13 @@ export default function HomeScreen({ navigation }) {
 
     const start = async () => {
 
-      const currentUser = auth.currentUser;
+      const currentUser =
+        auth.currentUser;
 
       if (!currentUser) {
 
         navigation.replace('Login');
+
         return;
       }
 
@@ -95,40 +97,48 @@ export default function HomeScreen({ navigation }) {
 
         await loadUser();
 
-        // تحميل الغرف مباشرة من Firebase
+        const roomsRef =
+          collection(
+            db,
+            'users',
+            currentUser.uid,
+            'rooms'
+          );
 
-        const roomsRef = collection(
-          db,
-          'users',
-          currentUser.uid,
-          'rooms'
-        );
+        const roomsQuery =
+          query(
+            roomsRef,
+            orderBy(
+              'createdAt',
+              'desc'
+            )
+          );
 
-        const roomsQuery = query(
-          roomsRef,
-          orderBy('createdAt', 'desc')
-        );
+        unsubscribeRooms =
+          onSnapshot(
+            roomsQuery,
+            (snapshot) => {
 
-        unsubscribeRooms = onSnapshot(
-          roomsQuery,
-          (snapshot) => {
+              const loadedRooms =
+                snapshot.docs.map(
+                  (item) => ({
+                    id: item.id,
+                    ...item.data(),
+                  })
+                );
 
-            const loadedRooms =
-              snapshot.docs.map((item) => ({
-                id: item.id,
-                ...item.data(),
-              }));
+              setRooms(
+                loadedRooms
+              );
+            },
+            (error) => {
 
-            setRooms(loadedRooms);
-          },
-          (error) => {
-
-            console.log(
-              'Rooms listener error:',
-              error
-            );
-          }
-        );
+              console.log(
+                'Rooms listener error:',
+                error
+              );
+            }
+          );
 
       } catch (error) {
 
@@ -168,7 +178,6 @@ export default function HomeScreen({ navigation }) {
         Math.random() * 9000000
       )
     );
-
   };
 
 
@@ -178,12 +187,20 @@ export default function HomeScreen({ navigation }) {
       generateUserId();
 
     const usersRef =
-      collection(db, 'users');
+      collection(
+        db,
+        'users'
+      );
 
-    let q = query(
-      usersRef,
-      where('userId', '==', newId)
-    );
+    let q =
+      query(
+        usersRef,
+        where(
+          'userId',
+          '==',
+          newId
+        )
+      );
 
     let result =
       await getDocs(q);
@@ -193,10 +210,15 @@ export default function HomeScreen({ navigation }) {
       newId =
         generateUserId();
 
-      q = query(
-        usersRef,
-        where('userId', '==', newId)
-      );
+      q =
+        query(
+          usersRef,
+          where(
+            'userId',
+            '==',
+            newId
+          )
+        );
 
       result =
         await getDocs(q);
@@ -224,7 +246,9 @@ export default function HomeScreen({ navigation }) {
           'يجب تسجيل الدخول أولاً'
         );
 
-        navigation.replace('Login');
+        navigation.replace(
+          'Login'
+        );
 
         return;
       }
@@ -238,7 +262,6 @@ export default function HomeScreen({ navigation }) {
 
       const userSnap =
         await getDoc(userRef);
-
 
       if (userSnap.exists()) {
 
@@ -256,7 +279,8 @@ export default function HomeScreen({ navigation }) {
         );
 
         setUserId(
-          data.userId || ''
+          data.userId ||
+          ''
         );
 
         setCoins(
@@ -301,12 +325,10 @@ export default function HomeScreen({ navigation }) {
             serverTimestamp(),
         };
 
-
         await setDoc(
           userRef,
           newUser
         );
-
 
         setUsername(
           newUser.username
@@ -320,9 +342,13 @@ export default function HomeScreen({ navigation }) {
           newUser.userId
         );
 
-        setCoins(2000000);
+        setCoins(
+          2000000
+        );
 
-        setAvatar('');
+        setAvatar(
+          ''
+        );
       }
 
     } catch (error) {
@@ -349,7 +375,8 @@ export default function HomeScreen({ navigation }) {
     try {
 
       const permission =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
+        await ImagePicker
+          .requestMediaLibraryPermissionsAsync();
 
       if (
         permission.status !==
@@ -364,32 +391,31 @@ export default function HomeScreen({ navigation }) {
         return;
       }
 
-
       const result =
-        await ImagePicker.launchImageLibraryAsync({
+        await ImagePicker
+          .launchImageLibraryAsync({
 
-          mediaTypes:
-            ['images'],
+            mediaTypes:
+              ['images'],
 
-          allowsEditing:
-            true,
+            allowsEditing:
+              true,
 
-          aspect:
-            [1, 1],
+            aspect:
+              [1, 1],
 
-          quality:
-            0.8,
-        });
-
+            quality:
+              0.8,
+          });
 
       if (
         result.canceled ||
         !result.assets ||
         !result.assets[0]
       ) {
+
         return;
       }
-
 
       const imageUri =
         result.assets[0].uri;
@@ -430,15 +456,17 @@ export default function HomeScreen({ navigation }) {
         return;
       }
 
-      setUploadingImage(true);
-
+      setUploadingImage(
+        true
+      );
 
       const response =
-        await fetch(imageUri);
+        await fetch(
+          imageUri
+        );
 
       const blob =
         await response.blob();
-
 
       const imageRef =
         ref(
@@ -446,18 +474,15 @@ export default function HomeScreen({ navigation }) {
           `avatars/${currentUser.uid}.jpg`
         );
 
-
       await uploadBytes(
         imageRef,
         blob
       );
 
-
       const downloadURL =
         await getDownloadURL(
           imageRef
         );
-
 
       await updateDoc(
         doc(
@@ -471,11 +496,9 @@ export default function HomeScreen({ navigation }) {
         }
       );
 
-
       setAvatar(
         downloadURL
       );
-
 
       Alert.alert(
         'تم الحفظ',
@@ -496,7 +519,9 @@ export default function HomeScreen({ navigation }) {
 
     } finally {
 
-      setUploadingImage(false);
+      setUploadingImage(
+        false
+      );
     }
   };
 
@@ -520,7 +545,6 @@ export default function HomeScreen({ navigation }) {
       return;
     }
 
-
     if (name.length < 2) {
 
       Alert.alert(
@@ -531,7 +555,6 @@ export default function HomeScreen({ navigation }) {
       return;
     }
 
-
     try {
 
       const currentUser =
@@ -540,7 +563,6 @@ export default function HomeScreen({ navigation }) {
       if (!currentUser) {
         return;
       }
-
 
       await updateDoc(
         doc(
@@ -554,11 +576,13 @@ export default function HomeScreen({ navigation }) {
         }
       );
 
+      setUsername(
+        name
+      );
 
-      setUsername(name);
-
-      setEditVisible(false);
-
+      setEditVisible(
+        false
+      );
 
       Alert.alert(
         'تم الحفظ',
@@ -599,11 +623,13 @@ export default function HomeScreen({ navigation }) {
       return;
     }
 
-
     try {
 
       const usersRef =
-        collection(db, 'users');
+        collection(
+          db,
+          'users'
+        );
 
       const q =
         query(
@@ -618,7 +644,6 @@ export default function HomeScreen({ navigation }) {
       const result =
         await getDocs(q);
 
-
       if (result.empty) {
 
         Alert.alert(
@@ -629,10 +654,8 @@ export default function HomeScreen({ navigation }) {
         return;
       }
 
-
       const userData =
         result.docs[0].data();
-
 
       Alert.alert(
         'تم العثور على المستخدم',
@@ -660,7 +683,7 @@ export default function HomeScreen({ navigation }) {
 
 
   // --------------------------------
-  // إنشاء غرفة وحفظها
+  // إنشاء غرفة
   // --------------------------------
 
   const createRoom = async () => {
@@ -674,15 +697,18 @@ export default function HomeScreen({ navigation }) {
         return;
       }
 
-
       const roomNumber =
-        Date.now().toString().slice(-6);
-
+        Date.now()
+          .toString()
+          .slice(-6);
 
       const room = {
 
         name:
           `غرفة ${username}`,
+
+        roomNumber:
+          roomNumber,
 
         ownerUid:
           currentUser.uid,
@@ -697,7 +723,6 @@ export default function HomeScreen({ navigation }) {
           serverTimestamp(),
       };
 
-
       const roomRef =
         doc(
           collection(
@@ -708,12 +733,10 @@ export default function HomeScreen({ navigation }) {
           )
         );
 
-
       await setDoc(
         roomRef,
         room
       );
-
 
       Alert.alert(
         'تم إنشاء الغرفة 🎙️',
@@ -769,7 +792,6 @@ export default function HomeScreen({ navigation }) {
       return;
     }
 
-
     try {
 
       const currentUser =
@@ -779,10 +801,8 @@ export default function HomeScreen({ navigation }) {
         return;
       }
 
-
       const newCoins =
         coins - price;
-
 
       await updateDoc(
         doc(
@@ -796,11 +816,9 @@ export default function HomeScreen({ navigation }) {
         }
       );
 
-
       setCoins(
         newCoins
       );
-
 
       Alert.alert(
         'تم إرسال الهدية 🎁',
@@ -924,7 +942,6 @@ export default function HomeScreen({ navigation }) {
         }
       >
 
-
         {/* الحساب */}
 
         <View
@@ -1023,7 +1040,7 @@ export default function HomeScreen({ navigation }) {
         </View>
 
 
-        {/* صورة الحساب */}
+        {/* رفع الصورة */}
 
         {uploadingImage && (
 
@@ -1199,7 +1216,9 @@ export default function HomeScreen({ navigation }) {
               styles.menuButton
             }
             onPress={() =>
-              setMicOn(!micOn)
+              setMicOn(
+                !micOn
+              )
             }
           >
 
@@ -1259,37 +1278,3 @@ export default function HomeScreen({ navigation }) {
               styles.menuButton
             }
             onPress={() =>
-              Alert.alert(
-                'الهدايا 🎁',
-                'اختر الهدية من قسم الهدايا بالأسفل'
-              )
-            }
-          >
-
-            <Text
-              style={
-                styles.menuIcon
-              }
-            >
-              🎁
-            </Text>
-
-            <Text
-              style={
-                styles.menuText
-              }
-            >
-              الهدايا
-            </Text>
-
-          </TouchableOpacity>
-
-        </View>
-
-
-        {/* الغرف */}
-
-        <View
-          style={
-            styles.section
-        
