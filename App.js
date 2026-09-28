@@ -4,6 +4,7 @@ import {
   StyleSheet, 
   Text, 
   View, 
+  Image,
   TouchableOpacity, 
   ScrollView, 
   TextInput, 
@@ -61,7 +62,7 @@ export default function App() {
     { id: 4, name: 'ماسة', icon: '💎', price: 500 },
   ];
 
-  // دالة لتنسيق الأرقام الكبيرة (مثل 10B)
+  // تنسيق الأرقام الكبيرة
   const formatCoins = (num) => {
     if (num >= 1000000000) {
       return (num / 1000000000).toFixed(0) + 'B';
@@ -125,11 +126,17 @@ export default function App() {
     <View style={styles.container}>
       <StatusBar style="dark" />
 
-      {/* الهيدر العلوي وملف الحساب */}
+      {/* الهيدر العلوي مع الصورة ورصيد الـ 10 مليار */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.userInfo} onPress={() => setProfileVisible(true)}>
-          <Text style={styles.welcomeText}>👑 الحساب الشخصي</Text>
-          <Text style={styles.appName}>Snaybr51 VIP Rooms ⚙️</Text>
+        <TouchableOpacity style={styles.userInfoRow} onPress={() => setProfileVisible(true)}>
+          <Image 
+            source={{ uri: 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png' }} 
+            style={styles.avatarImage} 
+          />
+          <View style={styles.userInfo}>
+            <Text style={styles.welcomeText}>👑 الحساب الشخصي</Text>
+            <Text style={styles.appName}>Snaybr51 VIP Rooms ⚙️</Text>
+          </View>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.coinBadge} onPress={() => Alert.alert('رصيد الحساب', `رصيدك الحالي: ${coins.toLocaleString()} عملة`)}>
@@ -335,22 +342,33 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     elevation: 2,
   },
+  userInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 8,
+    backgroundColor: '#eee',
+  },
   userInfo: {
     flexDirection: 'column',
   },
   welcomeText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#888',
   },
   appName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     color: '#4a3b32',
   },
   coinBadge: {
     backgroundColor: '#fff3cd',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 15,
     borderWidth: 1,
     borderColor: '#ffeeba',
@@ -358,7 +376,7 @@ const styles = StyleSheet.create({
   coinText: {
     fontWeight: 'bold',
     color: '#856404',
-    fontSize: 13,
+    fontSize: 12,
   },
   topActionsRow: {
     flexDirection: 'row',
@@ -526,7 +544,7 @@ const styles = StyleSheet.create({
   },
   giftsRow: {
     flexDirection: 'row',
-    justify.content: 'space-between',
+    justifyContent: 'space-between',
   },
   giftCard: {
     width: '23%',
@@ -698,8 +716,3 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelBtnText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-});
-    
