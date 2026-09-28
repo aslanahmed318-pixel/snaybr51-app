@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "Snaybr51",
+    "slug": "snaybr51",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "android": {
+      "package": "com.aslanahmed318.snaybr51"
+    }
+  }
+}
