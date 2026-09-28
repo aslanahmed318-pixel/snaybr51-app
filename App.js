@@ -6,7 +6,8 @@ import {
   View, 
   TouchableOpacity, 
   ScrollView, 
-  FlatList, 
+  TextInput, 
+  Modal, 
   Alert 
 } from 'react-native';
 
@@ -14,18 +15,33 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('all');
   const [activeRoom, setActiveRoom] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
-  const [mySeat, setMySeat] = useState(1); // المقعد الحالي للمستخدم
-  const [coins, setCoins] = useState(1250); // رصيد النقاط/العملات
+  const [isSpeakerMuted, setIsSpeakerMuted] = useState(false);
+  const [mySeat, setMySeat] = useState(1);
+  
+  // رصيد 10 مليار عملة افتراضية 💰
+  const [coins, setCoins] = useState(10000000000);
+
+  // حالات النوافذ المنبثقة (Modals)
+  const [profileVisible, setProfileVisible] = useState(false);
+  const [createRoomVisible, setCreateRoomVisible] = useState(false);
+  const [newRoomName, setNewRoomName] = useState('');
+
+  // الشات المباشر داخل الغرفة
+  const [chatMessages, setChatMessages] = useState([
+    { id: 1, sender: 'سارة', text: 'أهلاً بالجميع في الغرفة! 👋' },
+    { id: 2, sender: 'أحمد', text: 'صوت المايك ممتاز جداً ✨' },
+    { id: 3, sender: 'النظام', text: '🎁 قام أحمد بإرسال وردة إلى سارة!' },
+  ]);
+  const [inputMessage, setInputMessage] = useState('');
 
   // قائمة الغرف المتاحة
-  const rooms = [
+  const [rooms, setRooms] = useState([
     { id: 1, name: '👑 غرفة السوالف والدردشة الكبرى', host: 'المايسترو', users: '18/20', category: 'عام' },
     { id: 2, name: '🎵 رواد الموسيقى والطرب', host: 'سارة', users: '12/15', category: 'موسيقى' },
     { id: 3, name: '🎮 تحديات الجيمينج والألعاب', host: 'سنايبر', users: '8/10', category: 'ألعاب' },
-    { id: 4, name: '☕ مقهى الأصدقاء والتواصل', host: 'أحمد', users: '5/12', category: 'عام' },
-  ];
+  ]);
 
-  // المقاعد الصوتية على المسرح (8 مقاعد)
+  // مقاعد المتحدثين الـ 8
   const [seats, setSeats] = useState([
     { id: 1, name: 'أنت', isMuted: false, isHost: true, avatar: '👑' },
     { id: 2, name: 'سارة', isMuted: true, isHost: false, avatar: '🎧' },
@@ -45,70 +61,119 @@ export default function App() {
     { id: 4, name: 'ماسة', icon: '💎', price: 500 },
   ];
 
-  // دالة حجز المقعد أو مغادرته
+  // دالة لتنسيق الأرقام الكبيرة (مثل 10B)
+  const formatCoins = (num) => {
+    if (num >= 1000000000) {
+      return (num / 1000000000).toFixed(0) + 'B';
+    }
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(0) + 'M';
+    }
+    return num.toLocaleString();
+  };
+
+  // إرسال رسالة شات
+  const sendMessage = () => {
+    if (inputMessage.trim() === '') return;
+    setChatMessages([...chatMessages, { id: Date.now(), sender: 'أنت', text: inputMessage }]);
+    setInputMessage('');
+  };
+
+  // تغيير المقعد
   const toggleSeat = (seatId) => {
     if (mySeat === seatId) {
       setMySeat(null);
-      Alert.alert('المسرح', 'لقد غادرت مقعد المايك');
+      Alert.alert('المسرح', 'لقد نزلتم من المقعد.');
     } else {
       setMySeat(seatId);
-      Alert.alert('المسرح', `تم انضمامك للمقعد رقم #${seatId}`);
+      Alert.alert('المسرح', `تم انضمامك للمقعد #${seatId}`);
     }
   };
 
-  // دالة إرسال الهدايا
+  // إرسال هدية
   const sendGift = (gift) => {
     if (coins >= gift.price) {
       setCoins(coins - gift.price);
-      Alert.alert('إرسال هدية 🎁', `تم إرسال ${gift.name} ${gift.icon} بنجاح!`);
+      setChatMessages([
+        ...chatMessages, 
+        { id: Date.now(), sender: 'النظام', text: `🎁 أرسلت ${gift.name} ${gift.icon} للغرفة!` }
+      ]);
+      Alert.alert('إرسال هدية 🎁', `تم إرسال ${gift.name} ${gift.icon}`);
     } else {
-      Alert.alert('رصيد غير كافٍ', 'يرجى شحن العملات لإرسال هذه الهدية.');
+      Alert.alert('رصيد غير كافٍ', 'يرجى شحن النقاط أولاً.');
     }
+  };
+
+  // إنشاء غرفة جديدة
+  const createRoom = () => {
+    if (newRoomName.trim() === '') return;
+    const newRoom = {
+      id: rooms.length + 1,
+      name: `🏰 ${newRoomName}`,
+      host: 'أنت',
+      users: '1/15',
+      category: 'عام'
+    };
+    setRooms([newRoom, ...rooms]);
+    setActiveRoom(newRoom.id);
+    setCreateRoomVisible(false);
+    setNewRoomName('');
+    Alert.alert('تم بنجاح', 'تم إنشاء غرفتك الخاصة بنجاح!');
   };
 
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
 
-      {/* الهيدر العلوي والمعلومات الشخصية */}
+      {/* الهيدر العلوي وملف الحساب */}
       <View style={styles.header}>
-        <View style={styles.userInfo}>
-          <Text style={styles.welcomeText}>أهلاً بك 👋</Text>
-          <Text style={styles.appName}>Snaybr51 VIP Rooms</Text>
-        </View>
-        <View style={styles.coinBadge}>
-          <Text style={styles.coinText}>💰 {coins}</Text>
-        </View>
+        <TouchableOpacity style={styles.userInfo} onPress={() => setProfileVisible(true)}>
+          <Text style={styles.welcomeText}>👑 الحساب الشخصي</Text>
+          <Text style={styles.appName}>Snaybr51 VIP Rooms ⚙️</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.coinBadge} onPress={() => Alert.alert('رصيد الحساب', `رصيدك الحالي: ${coins.toLocaleString()} عملة`)}>
+          <Text style={styles.coinText}>💰 {formatCoins(coins)} ➕</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* شريط التصنيفات */}
-        <View style={styles.tabContainer}>
-          {['all', 'موسيقى', 'ألعاب'].map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tabButton, activeTab === tab && styles.activeTabButton]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-                {tab === 'all' ? '🌐 جميع الغرف' : tab}
-              </Text>
-            </TouchableOpacity>
-          ))}
+        {/* شريط التصنيفات وزر إنشاء غرفة */}
+        <View style={styles.topActionsRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabContainer}>
+            {['all', 'موسيقى', 'ألعاب'].map((tab) => (
+              <TouchableOpacity
+                key={tab}
+                style={[styles.tabButton, activeTab === tab && styles.activeTabButton]}
+                onPress={() => setActiveTab(tab)}
+              >
+                <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
+                  {tab === 'all' ? '🌐 الجميع' : tab}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <TouchableOpacity style={styles.createRoomBtn} onPress={() => setCreateRoomVisible(true)}>
+            <Text style={styles.createRoomBtnText}>➕ إنشاء غرفة</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* عرض الغرفة النشطة الحالية (عرض المسرح والمقاعد) */}
+        {/* واجهة الغرفة والمسرح */}
         <View style={styles.activeRoomStage}>
           <View style={styles.stageHeader}>
-            <Text style={styles.stageTitle}>
-              🏰 الغرفة الحالية #{activeRoom}
-            </Text>
-            <TouchableOpacity style={styles.leaveRoomButton} onPress={() => Alert.alert('غرفة', 'تم الخروج من الغرفة')}>
-              <Text style={styles.leaveRoomText}>🚪 خروج</Text>
-            </TouchableOpacity>
+            <Text style={styles.stageTitle}>🏰 الغرفة الحالية #{activeRoom}</Text>
+            <View style={styles.stageHeaderControls}>
+              <TouchableOpacity 
+                style={styles.speakerToggleBtn} 
+                onPress={() => setIsSpeakerMuted(!isSpeakerMuted)}
+              >
+                <Text style={styles.speakerText}>{isSpeakerMuted ? '🔇 مكتوم' : '🔊 صوت'}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* شبكة المقاعد الـ 8 */}
+          {/* المقاعد الـ 8 */}
           <Text style={styles.stageSubtitle}>🎙️ مقاعد المتحدثين على المسرح</Text>
           <View style={styles.seatsGrid}>
             {seats.map((seat) => (
@@ -121,30 +186,44 @@ export default function App() {
                 ]}
                 onPress={() => toggleSeat(seat.id)}
               >
-                <Text style={styles.seatAvatar}>
-                  {seat.isEmpty ? '➕' : seat.avatar || '👤'}
-                </Text>
-                <Text style={styles.seatName} numberOfLines={1}>
-                  {seat.isEmpty ? `مقعد ${seat.id}` : seat.name}
-                </Text>
+                <Text style={styles.seatAvatar}>{seat.isEmpty ? '➕' : seat.avatar || '👤'}</Text>
+                <Text style={styles.seatName} numberOfLines={1}>{seat.isEmpty ? `مقعد ${seat.id}` : seat.name}</Text>
                 {!seat.isEmpty && (
-                  <Text style={styles.seatMicStatus}>
-                    {seat.isMuted ? '🔇' : '🎙️'}
-                  </Text>
+                  <Text style={styles.seatMicStatus}>{seat.isMuted ? '🔇' : '🎙️'}</Text>
                 )}
               </TouchableOpacity>
             ))}
           </View>
 
+          {/* الشات المباشر داخل الغرفة */}
+          <Text style={styles.giftSectionTitle}>💬 المحادثة المباشرة للغرفة</Text>
+          <View style={styles.chatContainer}>
+            <ScrollView style={styles.chatScrollView} nestedScrollEnabled={true}>
+              {chatMessages.map((msg) => (
+                <Text key={msg.id} style={styles.chatMsgText}>
+                  <Text style={styles.chatSender}>{msg.sender}: </Text>
+                  {msg.text}
+                </Text>
+              ))}
+            </ScrollView>
+            <View style={styles.chatInputRow}>
+              <TextInput
+                style={styles.chatInput}
+                placeholder="اكتب رسالة..."
+                value={inputMessage}
+                onChangeText={setInputMessage}
+              />
+              <TouchableOpacity style={styles.sendChatBtn} onPress={sendMessage}>
+                <Text style={styles.sendChatBtnText}>إرسال</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           {/* متجر الهدايا السريع */}
-          <Text style={styles.giftSectionTitle}>🎁 إرسال هدايا للغرفة</Text>
+          <Text style={styles.giftSectionTitle}>🎁 إرسال هدايا</Text>
           <View style={styles.giftsRow}>
             {gifts.map((gift) => (
-              <TouchableOpacity
-                key={gift.id}
-                style={styles.giftCard}
-                onPress={() => sendGift(gift)}
-              >
+              <TouchableOpacity key={gift.id} style={styles.giftCard} onPress={() => sendGift(gift)}>
                 <Text style={styles.giftIcon}>{gift.icon}</Text>
                 <Text style={styles.giftName}>{gift.name}</Text>
                 <Text style={styles.giftPrice}>{gift.price} 🪙</Text>
@@ -153,8 +232,8 @@ export default function App() {
           </View>
         </View>
 
-        {/* قائمة الغرف المتاحة للانضمام */}
-        <Text style={styles.sectionTitle}>📋 قائمة الغرف المتاحة</Text>
+        {/* قائمة الغرف */}
+        <Text style={styles.sectionTitle}>📋 استكشف الغرف المتاحة</Text>
         {rooms.map((room) => (
           <TouchableOpacity
             key={room.id}
@@ -172,7 +251,7 @@ export default function App() {
         ))}
       </ScrollView>
 
-      {/* لوحة التحكم بالمايك والتفاعل المباشر بالأصل */}
+      {/* لوحة التحكم والمايك والتفاعلات السفلية */}
       <View style={styles.bottomControlBar}>
         <TouchableOpacity style={styles.actionIconButton} onPress={() => Alert.alert('تفاعل', 'تم إرسال ❤️')}>
           <Text style={styles.actionIconText}>❤️</Text>
@@ -182,14 +261,11 @@ export default function App() {
           <Text style={styles.actionIconText}>✋</Text>
         </TouchableOpacity>
 
-        {/* زر المايك الرئيسي */}
         <TouchableOpacity
           style={[styles.mainMicButton, isMuted ? styles.micMutedBg : styles.micActiveBg]}
           onPress={() => setIsMuted(!isMuted)}
         >
-          <Text style={styles.mainMicIcon}>
-            {isMuted ? '🎙️❌' : '🎙️✨'}
-          </Text>
+          <Text style={styles.mainMicIcon}>{isMuted ? '🎙️❌' : '🎙️✨'}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionIconButton} onPress={() => Alert.alert('تفاعل', 'تم إرسال 🎉')}>
@@ -200,6 +276,44 @@ export default function App() {
           <Text style={styles.actionIconText}>🔥</Text>
         </TouchableOpacity>
       </View>
+
+      {/* نافذة البروفايل (Modal) */}
+      <Modal visible={profileVisible} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>👤 ملفك الشخصي</Text>
+            <Text style={styles.modalSubtitle}>ID: 51519090</Text>
+            <Text style={styles.modalDetail}>الرتبة: VIP 🌟</Text>
+            <Text style={styles.modalDetail}>رصيد العملات: {coins.toLocaleString()} 🪙</Text>
+            <TouchableOpacity style={styles.closeModalBtn} onPress={() => setProfileVisible(false)}>
+              <Text style={styles.closeModalBtnText}>إغلاق</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* نافذة إنشاء غرفة جديدة (Modal) */}
+      <Modal visible={createRoomVisible} animationType="fade" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>🏰 إنشاء غرفة صوتية جديد</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="ادخل اسم الغرفة..."
+              value={newRoomName}
+              onChangeText={setNewRoomName}
+            />
+            <View style={styles.modalButtonsRow}>
+              <TouchableOpacity style={styles.confirmBtn} onPress={createRoom}>
+                <Text style={styles.confirmBtnText}>تم الإنشاء</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setCreateRoomVisible(false)}>
+                <Text style={styles.cancelBtnText}>إلغاء</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -215,7 +329,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 12,
     backgroundColor: '#fff',
     padding: 12,
     borderRadius: 18,
@@ -229,7 +343,7 @@ const styles = StyleSheet.create({
     color: '#888',
   },
   appName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#4a3b32',
   },
@@ -246,61 +360,80 @@ const styles = StyleSheet.create({
     color: '#856404',
     fontSize: 13,
   },
+  topActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   tabContainer: {
     flexDirection: 'row',
-    marginBottom: 15,
+    maxWidth: '65%',
   },
   tabButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 18,
     backgroundColor: '#fff',
-    marginRight: 8,
+    marginRight: 6,
   },
   activeTabButton: {
     backgroundColor: '#ff94b8',
   },
   tabText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#555',
     fontWeight: '600',
   },
   activeTabText: {
     color: '#fff',
   },
+  createRoomBtn: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 15,
+  },
+  createRoomBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
   activeRoomStage: {
     backgroundColor: '#fff',
     borderRadius: 20,
     padding: 15,
-    marginBottom: 20,
+    marginBottom: 15,
     elevation: 3,
   },
   stageHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
+  },
+  stageHeaderControls: {
+    flexDirection: 'row',
+  },
+  speakerToggleBtn: {
+    backgroundColor: '#eee',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  speakerText: {
+    fontSize: 11,
+    fontWeight: 'bold',
   },
   stageTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     color: '#4a3b32',
   },
-  leaveRoomButton: {
-    backgroundColor: '#ffe5e5',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-  },
-  leaveRoomText: {
-    color: '#d9534f',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
   stageSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#777',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   seatsGrid: {
     flexDirection: 'row',
@@ -311,9 +444,9 @@ const styles = StyleSheet.create({
     width: '22%',
     backgroundColor: '#f8f9fa',
     borderRadius: 12,
-    paddingVertical: 10,
+    paddingVertical: 8,
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: '#eee',
   },
@@ -326,62 +459,107 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
   },
   seatAvatar: {
-    fontSize: 22,
-    marginBottom: 4,
+    fontSize: 20,
+    marginBottom: 2,
   },
   seatName: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#333',
     fontWeight: '600',
   },
   seatMicStatus: {
-    fontSize: 10,
+    fontSize: 9,
     marginTop: 2,
   },
+  chatContainer: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 12,
+    padding: 10,
+    marginTop: 10,
+    maxHeight: 130,
+  },
+  chatScrollView: {
+    maxHeight: 70,
+    marginBottom: 5,
+  },
+  chatMsgText: {
+    fontSize: 11,
+    color: '#444',
+    marginBottom: 3,
+  },
+  chatSender: {
+    fontWeight: 'bold',
+    color: '#d81b60',
+  },
+  chatInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  chatInput: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    fontSize: 12,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  sendChatBtn: {
+    backgroundColor: '#ff94b8',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    marginLeft: 6,
+  },
+  sendChatBtnText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
   giftSectionTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 'bold',
     color: '#4a3b32',
     marginTop: 10,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   giftsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justify.content: 'space-between',
   },
   giftCard: {
     width: '23%',
     backgroundColor: '#fff8f0',
     borderRadius: 12,
-    padding: 8,
+    padding: 6,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#ffe0b2',
   },
   giftIcon: {
-    fontSize: 22,
+    fontSize: 20,
   },
   giftName: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#333',
-    marginTop: 2,
   },
   giftPrice: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#f57c00',
     fontWeight: 'bold',
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     color: '#4a3b32',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   roomCard: {
     backgroundColor: '#fff',
-    padding: 15,
+    padding: 12,
     borderRadius: 15,
-    marginBottom: 10,
+    marginBottom: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -391,14 +569,14 @@ const styles = StyleSheet.create({
     borderColor: '#ff94b8',
   },
   roomName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 'bold',
     color: '#333',
   },
   roomCategory: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#888',
-    marginTop: 3,
+    marginTop: 2,
   },
   roomBadge: {
     backgroundColor: '#fceee3',
@@ -417,22 +595,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
     borderRadius: 25,
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    marginTop: 5,
-    marginBottom: 10,
-    elevation: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+    elevation: 4,
   },
   actionIconButton: {
-    padding: 8,
+    padding: 6,
   },
   actionIconText: {
-    fontSize: 22,
+    fontSize: 20,
   },
   mainMicButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 55,
+    height: 55,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
@@ -444,7 +621,85 @@ const styles = StyleSheet.create({
     backgroundColor: '#E53935',
   },
   mainMicIcon: {
-    fontSize: 26,
+    fontSize: 24,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '80%',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#4a3b32',
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: '#888',
+    marginBottom: 5,
+  },
+  modalDetail: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 5,
+    color: '#333',
+  },
+  closeModalBtn: {
+    marginTop: 15,
+    backgroundColor: '#ff94b8',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  closeModalBtnText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  modalInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 15,
+  },
+  modalButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  confirmBtn: {
+    backgroundColor: '#4CAF50',
+    padding: 10,
+    borderRadius: 10,
+    flex: 1,
+    marginRight: 5,
+    alignItems: 'center',
+  },
+  confirmBtnText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  cancelBtn: {
+    backgroundColor: '#E53935',
+    padding: 10,
+    borderRadius: 10,
+    flex: 1,
+    marginLeft: 5,
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });
-                  
+    
