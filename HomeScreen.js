@@ -1278,3 +1278,879 @@ export default function HomeScreen({ navigation }) {
               styles.menuButton
             }
             onPress={() =>
+              Alert.alert(
+                'الهدايا 🎁',
+                'اختر الهدية من قسم الهدايا بالأسفل'
+              )
+            }
+          >
+
+            <Text
+              style={
+                styles.menuIcon
+              }
+            >
+              🎁
+            </Text>
+
+            <Text
+              style={
+                styles.menuText
+              }
+            >
+              الهدايا
+            </Text>
+
+          </TouchableOpacity>
+
+        </View>
+
+
+        {/* الغرف */}
+
+        <View
+          style={
+            styles.section
+          }
+        >
+
+          <Text
+            style={
+              styles.sectionTitle
+            }
+          >
+            🎙️ الغرف
+          </Text>
+
+
+          {rooms.length === 0 ? (
+
+            <View
+              style={
+                styles.emptyBox
+              }
+            >
+
+              <Text
+                style={
+                  styles.emptyText
+                }
+              >
+                لا توجد غرف حاليًا
+              </Text>
+
+            </View>
+
+          ) : (
+
+            rooms.map(
+              (room) => (
+
+                <TouchableOpacity
+                  key={
+                    room.id
+                  }
+                  style={
+                    styles.roomCard
+                  }
+                  onPress={() =>
+                    enterRoom(
+                      room
+                    )
+                  }
+                >
+
+                  <View
+                    style={
+                      styles.roomIcon
+                    }
+                  >
+                    🎙️
+                  </View>
+
+
+                  <View
+                    style={
+                      styles.roomInfo
+                    }
+                  >
+
+                    <Text
+                      style={
+                        styles.roomName
+                      }
+                    >
+                      {room.name ||
+                        'غرفة صوتية'}
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.roomDetails
+                      }
+                    >
+                      👤 {room.users || 0} مستخدم
+                    </Text>
+
+                    {room.roomNumber && (
+
+                      <Text
+                        style={
+                          styles.roomDetails
+                        }
+                      >
+                        رقم الغرفة: {
+                          room.roomNumber
+                        }
+                      </Text>
+
+                    )}
+
+                  </View>
+
+
+                  <Text
+                    style={
+                      styles.enterText
+                    }
+                  >
+                    دخول
+                  </Text>
+
+                </TouchableOpacity>
+
+              )
+            )
+
+          )}
+
+        </View>
+
+
+        {/* الهدايا */}
+
+        <View
+          style={
+            styles.section
+          }
+        >
+
+          <Text
+            style={
+              styles.sectionTitle
+            }
+          >
+            🎁 الهدايا
+          </Text>
+
+
+          <View
+            style={
+              styles.giftsGrid
+            }
+          >
+
+            <TouchableOpacity
+              style={
+                styles.giftButton
+              }
+              onPress={() =>
+                sendGift(
+                  'وردة 🌹',
+                  100
+                )
+              }
+            >
+
+              <Text
+                style={
+                  styles.giftIcon
+                }
+              >
+                🌹
+              </Text>
+
+              <Text
+                style={
+                  styles.giftName
+                }
+              >
+                وردة
+              </Text>
+
+              <Text
+                style={
+                  styles.giftPrice
+                }
+              >
+                🪙 100
+              </Text>
+
+            </TouchableOpacity>
+
+
+            <TouchableOpacity
+              style={
+                styles.giftButton
+              }
+              onPress={() =>
+                sendGift(
+                  'قلب ❤️',
+                  500
+                )
+              }
+            >
+
+              <Text
+                style={
+                  styles.giftIcon
+                }
+              >
+                ❤️
+              </Text>
+
+              <Text
+                style={
+                  styles.giftName
+                }
+              >
+                قلب
+              </Text>
+
+              <Text
+                style={
+                  styles.giftPrice
+                }
+              >
+                🪙 500
+              </Text>
+
+            </TouchableOpacity>
+
+
+            <TouchableOpacity
+              style={
+                styles.giftButton
+              }
+              onPress={() =>
+                sendGift(
+                  'تاج 👑',
+                  1000
+                )
+              }
+            >
+
+              <Text
+                style={
+                  styles.giftIcon
+                }
+              >
+                👑
+              </Text>
+
+              <Text
+                style={
+                  styles.giftName
+                }
+              >
+                تاج
+              </Text>
+
+              <Text
+                style={
+                  styles.giftPrice
+                }
+              >
+                🪙 1,000
+              </Text>
+
+            </TouchableOpacity>
+
+
+            <TouchableOpacity
+              style={
+                styles.giftButton
+              }
+              onPress={() =>
+                sendGift(
+                  'ماسة 💎',
+                  5000
+                )
+              }
+            >
+
+              <Text
+                style={
+                  styles.giftIcon
+                }
+              >
+                💎
+              </Text>
+
+              <Text
+                style={
+                  styles.giftName
+                }
+              >
+                ماسة
+              </Text>
+
+              <Text
+                style={
+                  styles.giftPrice
+                }
+              >
+                🪙 5,000
+              </Text>
+
+            </TouchableOpacity>
+
+          </View>
+
+        </View>
+
+
+        {/* تسجيل الخروج */}
+
+        <TouchableOpacity
+          style={
+            styles.logoutButton
+          }
+          onPress={
+            logout
+          }
+        >
+
+          <Text
+            style={
+              styles.logoutText
+            }
+          >
+            تسجيل الخروج
+          </Text>
+
+        </TouchableOpacity>
+
+
+      </ScrollView>
+
+
+      {/* نافذة تعديل الحساب */}
+
+      <Modal
+        visible={
+          editVisible
+        }
+        transparent
+        animationType="fade"
+        onRequestClose={() =>
+          setEditVisible(
+            false
+          )
+        }
+      >
+
+        <View
+          style={
+            styles.modalOverlay
+          }
+        >
+
+          <View
+            style={
+              styles.modalBox
+            }
+          >
+
+            <Text
+              style={
+                styles.modalTitle
+              }
+            >
+              تعديل الحساب
+            </Text>
+
+
+            <Text
+              style={
+                styles.inputLabel
+              }
+            >
+              اسم الحساب
+            </Text>
+
+
+            <TextInput
+              style={
+                styles.nameInput
+              }
+              value={
+                newUsername
+              }
+              onChangeText={
+                setNewUsername
+              }
+              placeholder="اكتب اسم الحساب"
+              textAlign="right"
+              maxLength={30}
+            />
+
+
+            <View
+              style={
+                styles.modalButtons
+              }
+            >
+
+              <TouchableOpacity
+                style={
+                  styles.cancelButton
+                }
+                onPress={() =>
+                  setEditVisible(
+                    false
+                  )
+                }
+              >
+
+                <Text
+                  style={
+                    styles.cancelText
+                  }
+                >
+                  إلغاء
+                </Text>
+
+              </TouchableOpacity>
+
+
+              <TouchableOpacity
+                style={
+                  styles.saveButton
+                }
+                onPress={
+                  saveProfile
+                }
+              >
+
+                <Text
+                  style={
+                    styles.saveText
+                  }
+                >
+                  حفظ
+                </Text>
+
+              </TouchableOpacity>
+
+            </View>
+
+          </View>
+
+        </View>
+
+      </Modal>
+
+    </View>
+  );
+}
+
+
+// ==================================
+// Styles
+// ==================================
+
+const styles = StyleSheet.create({
+
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f6fa',
+  },
+
+  content: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f5f6fa',
+  },
+
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+  },
+
+
+  // الحساب
+
+  profileCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    elevation: 2,
+  },
+
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#eeeeee',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+
+  avatarText: {
+    fontSize: 32,
+  },
+
+  profileInfo: {
+    flex: 1,
+    marginHorizontal: 12,
+  },
+
+  username: {
+    fontSize: 19,
+    fontWeight: 'bold',
+    textAlign: 'right',
+  },
+
+  userId: {
+    marginTop: 5,
+    fontSize: 13,
+    color: '#777777',
+    textAlign: 'right',
+  },
+
+  editButton: {
+    backgroundColor: '#eeeeee',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 12,
+  },
+
+  editButtonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+
+
+  // الصورة
+
+  uploadBox: {
+    backgroundColor: '#ffffff',
+    borderRadius: 15,
+    padding: 14,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+
+
+  // العملات
+
+  coinsCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    elevation: 2,
+  },
+
+  smallTitle: {
+    fontSize: 13,
+    color: '#777777',
+    textAlign: 'right',
+  },
+
+  coinsText: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginTop: 5,
+  },
+
+  chargeButton: {
+    backgroundColor: '#222222',
+    paddingHorizontal: 20,
+    paddingVertical: 11,
+    borderRadius: 14,
+  },
+
+  chargeText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+  },
+
+
+  // الأقسام
+
+  section: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
+    elevation: 1,
+  },
+
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 14,
+    textAlign: 'right',
+  },
+
+
+  // البحث
+
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  searchInput: {
+    flex: 1,
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#dddddd',
+    borderRadius: 13,
+    paddingHorizontal: 12,
+    backgroundColor: '#fafafa',
+  },
+
+  searchButton: {
+    backgroundColor: '#222222',
+    height: 48,
+    paddingHorizontal: 18,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+
+  buttonText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+  },
+
+
+  // الخدمات
+
+  buttonsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+
+  menuButton: {
+    width: '48%',
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    paddingVertical: 20,
+    alignItems: 'center',
+    marginBottom: 10,
+    elevation: 2,
+  },
+
+  menuIcon: {
+    fontSize: 30,
+    marginBottom: 8,
+  },
+
+  menuText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+
+
+  // الغرف
+
+  emptyBox: {
+    padding: 25,
+    alignItems: 'center',
+  },
+
+  emptyText: {
+    color: '#888888',
+    fontSize: 15,
+  },
+
+  roomCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f7f7f7',
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 10,
+  },
+
+  roomIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#eeeeee',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 24,
+  },
+
+  roomInfo: {
+    flex: 1,
+    marginHorizontal: 12,
+  },
+
+  roomName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'right',
+  },
+
+  roomDetails: {
+    marginTop: 4,
+    color: '#777777',
+    fontSize: 12,
+    textAlign: 'right',
+  },
+
+  enterText: {
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+
+
+  // الهدايا
+
+  giftsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+
+  giftButton: {
+    width: '48%',
+    backgroundColor: '#f7f7f7',
+    borderRadius: 16,
+    alignItems: 'center',
+    paddingVertical: 16,
+    marginBottom: 10,
+  },
+
+  giftIcon: {
+    fontSize: 34,
+  },
+
+  giftName: {
+    marginTop: 6,
+    fontWeight: 'bold',
+  },
+
+  giftPrice: {
+    marginTop: 4,
+    color: '#777777',
+    fontSize: 12,
+  },
+
+
+  // تسجيل الخروج
+
+  logoutButton: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    paddingVertical: 15,
+    alignItems: 'center',
+    marginTop: 5,
+    marginBottom: 20,
+  },
+
+  logoutText: {
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+
+
+  // نافذة التعديل
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+
+  modalBox: {
+    width: '100%',
+    backgroundColor: '#ffffff',
+    borderRadius: 22,
+    padding: 20,
+  },
+
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'right',
+  },
+
+  nameInput: {
+    height: 50,
+    borderWidth: 1,
+    borderColor: '#dddddd',
+    borderRadius: 13,
+    paddingHorizontal: 12,
+    backgroundColor: '#fafafa',
+  },
+
+  modalButtons: {
+    flexDirection: 'row',
+    marginTop: 20,
+    gap: 10,
+  },
+
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#eeeeee',
+    borderRadius: 13,
+    paddingVertical: 13,
+    alignItems: 'center',
+  },
+
+  cancelText: {
+    fontWeight: 'bold',
+  },
+
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#222222',
+    borderRadius: 13,
+    paddingVertical: 13,
+    alignItems: 'center',
+  },
+
+  saveText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+  },
+
+});
