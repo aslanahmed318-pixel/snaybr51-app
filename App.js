@@ -4,12 +4,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import LoginScreen from './LoginScreen';
 import RegisterScreen from './RegisterScreen';
+import HomeScreen from './HomeScreen';
 
 const Stack = createNativeStackNavigator();
-
-function HomeScreen() {
-  return null;
-}
 
 export default function App() {
   return (
