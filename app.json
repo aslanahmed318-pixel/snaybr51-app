@@ -2,6 +2,7 @@
   "expo": {
     "name": "snaybr51",
     "slug": "snaybr51",
+    "owner": "sniper51s-team",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
