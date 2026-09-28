@@ -19,10 +19,10 @@ export default function App() {
   const [isSpeakerMuted, setIsSpeakerMuted] = useState(false);
   const [mySeat, setMySeat] = useState(1);
   
-  // رصيد 10 مليار عملة افتراضية 💰
+  // رصيد 10 مليار عملة 💰
   const [coins, setCoins] = useState(10000000000);
 
-  // حالات النوافذ المنبثقة (Modals)
+  // حالات النوافذ المنبثقة
   const [profileVisible, setProfileVisible] = useState(false);
   const [createRoomVisible, setCreateRoomVisible] = useState(false);
   const [newRoomName, setNewRoomName] = useState('');
@@ -126,7 +126,7 @@ export default function App() {
     <View style={styles.container}>
       <StatusBar style="dark" />
 
-      {/* الهيدر العلوي مع الصورة ورصيد الـ 10 مليار */}
+      {/* الهيدر العلوي */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.userInfoRow} onPress={() => setProfileVisible(true)}>
           <Image 
@@ -145,7 +145,7 @@ export default function App() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* شريط التصنيفات وزر إنشاء غرفة */}
+        {/* شريط التصنيفات */}
         <View style={styles.topActionsRow}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabContainer}>
             {['all', 'موسيقى', 'ألعاب'].map((tab) => (
@@ -166,7 +166,7 @@ export default function App() {
           </TouchableOpacity>
         </View>
 
-        {/* واجهة الغرفة والمسرح */}
+        {/* واجهة الغرفة النشطة */}
         <View style={styles.activeRoomStage}>
           <View style={styles.stageHeader}>
             <Text style={styles.stageTitle}>🏰 الغرفة الحالية #{activeRoom}</Text>
@@ -202,7 +202,7 @@ export default function App() {
             ))}
           </View>
 
-          {/* الشات المباشر داخل الغرفة */}
+          {/* الشات المباشر */}
           <Text style={styles.giftSectionTitle}>💬 المحادثة المباشرة للغرفة</Text>
           <View style={styles.chatContainer}>
             <ScrollView style={styles.chatScrollView} nestedScrollEnabled={true}>
@@ -226,7 +226,7 @@ export default function App() {
             </View>
           </View>
 
-          {/* متجر الهدايا السريع */}
+          {/* متجر الهدايا */}
           <Text style={styles.giftSectionTitle}>🎁 إرسال هدايا</Text>
           <View style={styles.giftsRow}>
             {gifts.map((gift) => (
@@ -258,7 +258,7 @@ export default function App() {
         ))}
       </ScrollView>
 
-      {/* لوحة التحكم والمايك والتفاعلات السفلية */}
+      {/* لوحة التحكم والمايك */}
       <View style={styles.bottomControlBar}>
         <TouchableOpacity style={styles.actionIconButton} onPress={() => Alert.alert('تفاعل', 'تم إرسال ❤️')}>
           <Text style={styles.actionIconText}>❤️</Text>
@@ -284,7 +284,7 @@ export default function App() {
         </TouchableOpacity>
       </View>
 
-      {/* نافذة البروفايل (Modal) */}
+      {/* نافذة البروفايل */}
       <Modal visible={profileVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -299,11 +299,11 @@ export default function App() {
         </View>
       </Modal>
 
-      {/* نافذة إنشاء غرفة جديدة (Modal) */}
+      {/* نافذة إنشاء غرفة جديدة */}
       <Modal visible={createRoomVisible} animationType="fade" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>🏰 إنشاء غرفة صوتية جديد</Text>
+            <Text style={styles.modalTitle}>🏰 إنشاء غرفة صوتية جديدة</Text>
             <TextInput
               style={styles.modalInput}
               placeholder="ادخل اسم الغرفة..."
@@ -716,3 +716,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelBtnText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+});
+    
