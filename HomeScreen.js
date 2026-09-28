@@ -47,16 +47,18 @@ export default function HomeScreen({ navigation }) {
     },
   ]);
 
-  // --------------------------------
+  // ================================
   // تحميل بيانات المستخدم
-  // --------------------------------
+  // ================================
 
   useEffect(() => {
     loadUser();
   }, []);
 
   const generateUserId = () => {
-    return String(Math.floor(1000000 + Math.random() * 9000000));
+    return String(
+      Math.floor(1000000 + Math.random() * 9000000)
+    );
   };
 
   const createUniqueUserId = async () => {
@@ -169,9 +171,9 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  // --------------------------------
+  // ================================
   // البحث عن مستخدم
-  // --------------------------------
+  // ================================
 
   const searchUser = async () => {
     const id = searchId.trim();
@@ -229,9 +231,9 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  // --------------------------------
+  // ================================
   // إنشاء غرفة
-  // --------------------------------
+  // ================================
 
   const createRoom = () => {
     const newRoom = {
@@ -258,9 +260,9 @@ export default function HomeScreen({ navigation }) {
     );
   };
 
-  // --------------------------------
+  // ================================
   // دخول الغرفة
-  // --------------------------------
+  // ================================
 
   const enterRoom = (room) => {
     Alert.alert(
@@ -269,9 +271,9 @@ export default function HomeScreen({ navigation }) {
     );
   };
 
-  // --------------------------------
+  // ================================
   // إرسال هدية
-  // --------------------------------
+  // ================================
 
   const sendGift = async (
     giftName,
@@ -286,15 +288,19 @@ export default function HomeScreen({ navigation }) {
     }
 
     try {
-      const newCoins =
-        coins - price;
-
       const currentUser =
         auth.currentUser;
 
       if (!currentUser) {
+        Alert.alert(
+          'تنبيه',
+          'يجب تسجيل الدخول أولاً'
+        );
         return;
       }
+
+      const newCoins =
+        coins - price;
 
       await updateDoc(
         doc(
@@ -326,9 +332,9 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  // --------------------------------
+  // ================================
   // متجر العملات
-  // --------------------------------
+  // ================================
 
   const openStore = () => {
     Alert.alert(
@@ -337,9 +343,9 @@ export default function HomeScreen({ navigation }) {
     );
   };
 
-  // --------------------------------
+  // ================================
   // متجر VIP
-  // --------------------------------
+  // ================================
 
   const openVIP = () => {
     Alert.alert(
@@ -348,9 +354,9 @@ export default function HomeScreen({ navigation }) {
     );
   };
 
-  // --------------------------------
+  // ================================
   // تعديل الحساب
-  // --------------------------------
+  // ================================
 
   const editProfile = () => {
     Alert.alert(
@@ -359,17 +365,15 @@ export default function HomeScreen({ navigation }) {
     );
   };
 
-  // --------------------------------
+  // ================================
   // تسجيل الخروج
-  // --------------------------------
+  // ================================
 
   const logout = async () => {
     try {
       await auth.signOut();
 
-      navigation.replace(
-        'Login'
-      );
+      navigation.replace('Login');
     } catch (error) {
       Alert.alert(
         'خطأ',
@@ -378,13 +382,14 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  // --------------------------------
+  // ================================
   // شاشة التحميل
-  // --------------------------------
+  // ================================
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
+
         <ActivityIndicator
           size="large"
         />
@@ -392,24 +397,21 @@ export default function HomeScreen({ navigation }) {
         <Text style={styles.loadingText}>
           جاري تحميل الحساب...
         </Text>
+
       </View>
     );
   }
 
-  // --------------------------------
+  // ================================
   // الواجهة الرئيسية
-  // --------------------------------
+  // ================================
 
   return (
     <View style={styles.container}>
 
       <ScrollView
-        contentContainerStyle={
-          styles.content
-        }
-        showsVerticalScrollIndicator={
-          false
-        }
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
       >
 
         {/* الحساب */}
@@ -485,9 +487,7 @@ export default function HomeScreen({ navigation }) {
             <TextInput
               style={styles.searchInput}
               value={searchId}
-              onChangeText={
-                setSearchId
-              }
+              onChangeText={setSearchId}
               placeholder="اكتب ID المستخدم"
               keyboardType="numeric"
               textAlign="right"
@@ -530,9 +530,7 @@ export default function HomeScreen({ navigation }) {
             }
           >
             <Text style={styles.menuIcon}>
-              {micOn
-                ? '🎙️'
-                : '🔇'}
+              {micOn ? '🎙️' : '🔇'}
             </Text>
 
             <Text style={styles.menuText}>
@@ -606,9 +604,11 @@ export default function HomeScreen({ navigation }) {
             >
 
               <View style={styles.roomIcon}>
+
                 <Text style={styles.roomIconText}>
                   🎙️
                 </Text>
+
               </View>
 
               <View style={styles.roomInfo}>
@@ -667,6 +667,7 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.giftPrice}>
                 100 🪙
               </Text>
+
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -689,6 +690,7 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.giftPrice}>
                 500 🪙
               </Text>
+
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -711,6 +713,7 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.giftPrice}>
                 1,000 🪙
               </Text>
+
             </TouchableOpacity>
 
           </View>
@@ -838,9 +841,9 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-// --------------------------------
+// ======================================
 // Styles
-// --------------------------------
+// ======================================
 
 const styles = StyleSheet.create({
 
@@ -1046,4 +1049,4 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     backgroundColor: '#e9f3ff',
     alignItems: 'center',
-    j
+    just
