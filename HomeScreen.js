@@ -27,7 +27,6 @@ import {
   where,
   getDocs,
   onSnapshot,
-  orderBy,
   serverTimestamp,
 } from 'firebase/firestore';
 
@@ -73,30 +72,48 @@ export default function HomeScreen({ navigation }) {
     useState(false);
 
 
-  // --------------------------------
+  // ==================================
   // تحميل الحساب والغرف
-  // --------------------------------
+  // ==================================
 
   useEffect(() => {
 
-    let unsubscribeRooms;
+    let unsubscribeRooms = null;
+    let mounted = true;
 
     const start = async () => {
 
-      const currentUser =
-        auth.currentUser;
-
-      if (!currentUser) {
-
-        navigation.replace('Login');
-
-        return;
-      }
-
       try {
 
-        await loadUser();
+        const currentUser =
+          auth.currentUser;
 
+        if (!currentUser) {
+
+          if (mounted) {
+            navigation.replace('Login');
+          }
+
+          return;
+        }
+
+
+        // تحميل بيانات المستخدم
+        const userLoaded =
+          await loadUser();
+
+        if (!userLoaded) {
+          return;
+        }
+
+
+        if (!mounted) {
+          return;
+        }
+
+
+        // تحميل الغرف
+        // بدون orderBy لتجنب مشاكل Firestore أثناء الاختبار
         const roomsRef =
           collection(
             db,
@@ -105,19 +122,15 @@ export default function HomeScreen({ navigation }) {
             'rooms'
           );
 
-        const roomsQuery =
-          query(
-            roomsRef,
-            orderBy(
-              'createdAt',
-              'desc'
-            )
-          );
 
         unsubscribeRooms =
           onSnapshot(
-            roomsQuery,
+            roomsRef,
             (snapshot) => {
+
+              if (!mounted) {
+                return;
+              }
 
               const loadedRooms =
                 snapshot.docs.map(
@@ -137,25 +150,38 @@ export default function HomeScreen({ navigation }) {
                 'Rooms listener error:',
                 error
               );
+
+              // الخطأ في الغرف لا يغلق التطبيق
+              if (mounted) {
+                setRooms([]);
+              }
+
             }
           );
 
       } catch (error) {
 
         console.log(
-          'Start error:',
+          'Home start error:',
           error
         );
 
       } finally {
 
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
+
       }
     };
 
+
     start();
 
+
     return () => {
+
+      mounted = false;
 
       if (unsubscribeRooms) {
         unsubscribeRooms();
@@ -166,9 +192,9 @@ export default function HomeScreen({ navigation }) {
   }, []);
 
 
-  // --------------------------------
+  // ==================================
   // إنشاء ID مستخدم
-  // --------------------------------
+  // ==================================
 
   const generateUserId = () => {
 
@@ -178,6 +204,7 @@ export default function HomeScreen({ navigation }) {
         Math.random() * 9000000
       )
     );
+
   };
 
 
@@ -192,6 +219,7 @@ export default function HomeScreen({ navigation }) {
         'users'
       );
 
+
     let q =
       query(
         usersRef,
@@ -202,10 +230,18 @@ export default function HomeScreen({ navigation }) {
         )
       );
 
+
     let result =
       await getDocs(q);
 
-    while (!result.empty) {
+
+    let attempts = 0;
+
+
+    while (
+      !result.empty &&
+      attempts < 20
+    ) {
 
       newId =
         generateUserId();
@@ -222,15 +258,20 @@ export default function HomeScreen({ navigation }) {
 
       result =
         await getDocs(q);
+
+      attempts++;
+
     }
 
+
     return newId;
+
   };
 
 
-  // --------------------------------
+  // ==================================
   // تحميل بيانات المستخدم
-  // --------------------------------
+  // ==================================
 
   const loadUser = async () => {
 
@@ -239,19 +280,19 @@ export default function HomeScreen({ navigation }) {
       const currentUser =
         auth.currentUser;
 
+
       if (!currentUser) {
 
-        Alert.alert(
-          'تنبيه',
-          'يجب تسجيل الدخول أولاً'
-        );
+        if (navigation) {
+          navigation.replace(
+            'Login'
+          );
+        }
 
-        navigation.replace(
-          'Login'
-        );
+        return false;
 
-        return;
       }
+
 
       const userRef =
         doc(
@@ -260,28 +301,37 @@ export default function HomeScreen({ navigation }) {
           currentUser.uid
         );
 
-      const userSnap =
-        await getDoc(userRef);
 
+      const userSnap =
+        await getDoc(
+          userRef
+        );
+
+
+      // المستخدم موجود
       if (userSnap.exists()) {
 
         const data =
           userSnap.data();
+
 
         setUsername(
           data.username ||
           'مستخدم جديد'
         );
 
+
         setNewUsername(
           data.username ||
           'مستخدم جديد'
         );
 
+
         setUserId(
           data.userId ||
           ''
         );
+
 
         setCoins(
           typeof data.coins === 'number'
@@ -289,67 +339,148 @@ export default function HomeScreen({ navigation }) {
             : 2000000
         );
 
+
         setAvatar(
           data.avatar ||
           ''
         );
 
-      } else {
 
-        const newUserId =
-          await createUniqueUserId();
+        // إذا كانت بعض البيانات ناقصة
+        const missingData = {};
 
-        const newUser = {
 
-          uid:
-            currentUser.uid,
+        if (
+          typeof data.coins !== 'number'
+        ) {
+          missingData.coins =
+            2000000;
+        }
 
-          username:
+
+        if (!data.username) {
+          missingData.username =
             currentUser.displayName ||
-            'مستخدم جديد',
+            'مستخدم جديد';
+        }
 
-          email:
-            currentUser.email ||
-            '',
 
-          userId:
-            newUserId,
+        if (
+          !data.userId
+        ) {
 
-          coins:
-            2000000,
+          const generatedId =
+            await createUniqueUserId();
 
-          avatar:
-            '',
+          missingData.userId =
+            generatedId;
 
-          createdAt:
-            serverTimestamp(),
-        };
+          setUserId(
+            generatedId
+          );
 
-        await setDoc(
-          userRef,
-          newUser
-        );
+        }
 
-        setUsername(
-          newUser.username
-        );
 
-        setNewUsername(
-          newUser.username
-        );
+        if (
+          Object.keys(
+            missingData
+          ).length > 0
+        ) {
 
-        setUserId(
-          newUser.userId
-        );
+          try {
 
-        setCoins(
-          2000000
-        );
+            await updateDoc(
+              userRef,
+              missingData
+            );
 
-        setAvatar(
-          ''
-        );
+          } catch (updateError) {
+
+            console.log(
+              'Missing data update error:',
+              updateError
+            );
+
+          }
+
+        }
+
+
+        return true;
+
       }
+
+
+      // مستخدم جديد
+      const newUserId =
+        await createUniqueUserId();
+
+
+      const newUsername =
+        currentUser.displayName ||
+        'مستخدم جديد';
+
+
+      const newUser = {
+
+        uid:
+          currentUser.uid,
+
+        username:
+          newUsername,
+
+        email:
+          currentUser.email ||
+          '',
+
+        userId:
+          newUserId,
+
+        coins:
+          2000000,
+
+        avatar:
+          '',
+
+        createdAt:
+          serverTimestamp(),
+
+      };
+
+
+      await setDoc(
+        userRef,
+        newUser
+      );
+
+
+      setUsername(
+        newUsername
+      );
+
+
+      setNewUsername(
+        newUsername
+      );
+
+
+      setUserId(
+        newUserId
+      );
+
+
+      setCoins(
+        2000000
+      );
+
+
+      setAvatar(
+        ''
+      );
+
+
+      return true;
 
     } catch (error) {
 
@@ -358,17 +489,23 @@ export default function HomeScreen({ navigation }) {
         error
       );
 
+
       Alert.alert(
         'خطأ',
-        'حدث خطأ أثناء تحميل بيانات الحساب'
+        'حدث خطأ أثناء تحميل الحساب.\nتحقق من اتصال Firebase.'
       );
+
+
+      return false;
+
     }
+
   };
 
 
-  // --------------------------------
+  // ==================================
   // اختيار صورة الحساب
-  // --------------------------------
+  // ==================================
 
   const pickAvatar = async () => {
 
@@ -377,6 +514,7 @@ export default function HomeScreen({ navigation }) {
       const permission =
         await ImagePicker
           .requestMediaLibraryPermissionsAsync();
+
 
       if (
         permission.status !==
@@ -389,14 +527,16 @@ export default function HomeScreen({ navigation }) {
         );
 
         return;
+
       }
+
 
       const result =
         await ImagePicker
           .launchImageLibraryAsync({
 
             mediaTypes:
-              ['images'],
+              ImagePicker.MediaTypeOptions.Images,
 
             allowsEditing:
               true,
@@ -406,7 +546,9 @@ export default function HomeScreen({ navigation }) {
 
             quality:
               0.8,
+
           });
+
 
       if (
         result.canceled ||
@@ -415,10 +557,13 @@ export default function HomeScreen({ navigation }) {
       ) {
 
         return;
+
       }
+
 
       const imageUri =
         result.assets[0].uri;
+
 
       await uploadAvatar(
         imageUri
@@ -431,17 +576,20 @@ export default function HomeScreen({ navigation }) {
         error
       );
 
+
       Alert.alert(
         'خطأ',
-        'تعذر اختيار الصورة'
+        'تعذر اختيار الصورة.'
       );
+
     }
+
   };
 
 
-  // --------------------------------
-  // رفع الصورة إلى Firebase
-  // --------------------------------
+  // ==================================
+  // رفع الصورة
+  // ==================================
 
   const uploadAvatar = async (
     imageUri
@@ -452,21 +600,26 @@ export default function HomeScreen({ navigation }) {
       const currentUser =
         auth.currentUser;
 
+
       if (!currentUser) {
         return;
       }
 
+
       setUploadingImage(
         true
       );
+
 
       const response =
         await fetch(
           imageUri
         );
 
+
       const blob =
         await response.blob();
+
 
       const imageRef =
         ref(
@@ -474,15 +627,18 @@ export default function HomeScreen({ navigation }) {
           `avatars/${currentUser.uid}.jpg`
         );
 
+
       await uploadBytes(
         imageRef,
         blob
       );
 
+
       const downloadURL =
         await getDownloadURL(
           imageRef
         );
+
 
       await updateDoc(
         doc(
@@ -496,14 +652,17 @@ export default function HomeScreen({ navigation }) {
         }
       );
 
+
       setAvatar(
         downloadURL
       );
+
 
       Alert.alert(
         'تم الحفظ',
         'تم حفظ صورة الحساب بنجاح ✅'
       );
+
 
     } catch (error) {
 
@@ -512,57 +671,68 @@ export default function HomeScreen({ navigation }) {
         error
       );
 
+
       Alert.alert(
         'خطأ',
-        'تعذر حفظ صورة الحساب'
+        'تعذر حفظ صورة الحساب.\nتحقق من إعدادات Firebase Storage.'
       );
+
 
     } finally {
 
       setUploadingImage(
         false
       );
+
     }
+
   };
 
 
-  // --------------------------------
+  // ==================================
   // حفظ اسم الحساب
-  // --------------------------------
+  // ==================================
 
   const saveProfile = async () => {
 
     const name =
       newUsername.trim();
 
+
     if (!name) {
 
       Alert.alert(
         'تنبيه',
-        'اكتب اسم الحساب أولاً'
+        'اكتب اسم الحساب أولاً.'
       );
 
       return;
+
     }
+
 
     if (name.length < 2) {
 
       Alert.alert(
         'تنبيه',
-        'الاسم يجب أن يكون حرفين على الأقل'
+        'الاسم يجب أن يكون حرفين على الأقل.'
       );
 
       return;
+
     }
+
 
     try {
 
       const currentUser =
         auth.currentUser;
 
+
       if (!currentUser) {
         return;
       }
+
 
       await updateDoc(
         doc(
@@ -576,18 +746,22 @@ export default function HomeScreen({ navigation }) {
         }
       );
 
+
       setUsername(
         name
       );
+
 
       setEditVisible(
         false
       );
 
+
       Alert.alert(
         'تم الحفظ',
         'تم حفظ اسم الحساب بنجاح ✅'
       );
+
 
     } catch (error) {
 
@@ -596,32 +770,38 @@ export default function HomeScreen({ navigation }) {
         error
       );
 
+
       Alert.alert(
         'خطأ',
-        'تعذر حفظ اسم الحساب'
+        'تعذر حفظ اسم الحساب.'
       );
+
     }
+
   };
 
 
-  // --------------------------------
+  // ==================================
   // البحث عن مستخدم
-  // --------------------------------
+  // ==================================
 
   const searchUser = async () => {
 
     const id =
       searchId.trim();
 
+
     if (!id) {
 
       Alert.alert(
         'تنبيه',
-        'اكتب ID المستخدم'
+        'اكتب ID المستخدم.'
       );
 
       return;
+
     }
+
 
     try {
 
@@ -630,6 +810,7 @@ export default function HomeScreen({ navigation }) {
           db,
           'users'
         );
+
 
       const q =
         query(
@@ -641,21 +822,26 @@ export default function HomeScreen({ navigation }) {
           )
         );
 
+
       const result =
         await getDocs(q);
+
 
       if (result.empty) {
 
         Alert.alert(
           'نتيجة البحث',
-          'لم يتم العثور على مستخدم بهذا ID'
+          'لم يتم العثور على مستخدم بهذا ID.'
         );
 
         return;
+
       }
+
 
       const userData =
         result.docs[0].data();
+
 
       Alert.alert(
         'تم العثور على المستخدم',
@@ -663,9 +849,11 @@ export default function HomeScreen({ navigation }) {
           userData.username ||
           'بدون اسم'
         }\nID: ${
-          userData.userId
+          userData.userId ||
+          id
         }`
       );
+
 
     } catch (error) {
 
@@ -674,17 +862,20 @@ export default function HomeScreen({ navigation }) {
         error
       );
 
+
       Alert.alert(
         'خطأ',
-        'حدث خطأ أثناء البحث'
+        'حدث خطأ أثناء البحث.'
       );
+
     }
+
   };
 
 
-  // --------------------------------
+  // ==================================
   // إنشاء غرفة
-  // --------------------------------
+  // ==================================
 
   const createRoom = async () => {
 
@@ -693,14 +884,17 @@ export default function HomeScreen({ navigation }) {
       const currentUser =
         auth.currentUser;
 
+
       if (!currentUser) {
         return;
       }
+
 
       const roomNumber =
         Date.now()
           .toString()
           .slice(-6);
+
 
       const room = {
 
@@ -721,7 +915,9 @@ export default function HomeScreen({ navigation }) {
 
         createdAt:
           serverTimestamp(),
+
       };
+
 
       const roomRef =
         doc(
@@ -733,15 +929,18 @@ export default function HomeScreen({ navigation }) {
           )
         );
 
+
       await setDoc(
         roomRef,
         room
       );
 
+
       Alert.alert(
         'تم إنشاء الغرفة 🎙️',
         `تم إنشاء ${room.name}\nرقم الغرفة: ${roomNumber}`
       );
+
 
     } catch (error) {
 
@@ -750,32 +949,38 @@ export default function HomeScreen({ navigation }) {
         error
       );
 
+
       Alert.alert(
         'خطأ',
-        'تعذر إنشاء الغرفة'
+        'تعذر إنشاء الغرفة.'
       );
+
     }
+
   };
 
 
-  // --------------------------------
+  // ==================================
   // دخول الغرفة
-  // --------------------------------
+  // ==================================
 
   const enterRoom = (room) => {
 
     Alert.alert(
       'دخول الغرفة 🎙️',
-      `${room.name}\n\nعدد الموجودين: ${
+      `${room.name || 'غرفة صوتية'}\n\nعدد الموجودين: ${
         room.users || 0
+      }\n\nرقم الغرفة: ${
+        room.roomNumber || 'غير محدد'
       }`
     );
+
   };
 
 
-  // --------------------------------
+  // ==================================
   // إرسال هدية
-  // --------------------------------
+  // ==================================
 
   const sendGift = async (
     giftName,
@@ -786,23 +991,28 @@ export default function HomeScreen({ navigation }) {
 
       Alert.alert(
         'الرصيد غير كافٍ',
-        'لا تملك عملات كافية'
+        'لا تملك عملات كافية.'
       );
 
       return;
+
     }
+
 
     try {
 
       const currentUser =
         auth.currentUser;
 
+
       if (!currentUser) {
         return;
       }
 
+
       const newCoins =
         coins - price;
+
 
       await updateDoc(
         doc(
@@ -816,14 +1026,17 @@ export default function HomeScreen({ navigation }) {
         }
       );
 
+
       setCoins(
         newCoins
       );
+
 
       Alert.alert(
         'تم إرسال الهدية 🎁',
         `${giftName}\nالسعر: ${price.toLocaleString()}\nالرصيد المتبقي: ${newCoins.toLocaleString()}`
       );
+
 
     } catch (error) {
 
@@ -832,17 +1045,20 @@ export default function HomeScreen({ navigation }) {
         error
       );
 
+
       Alert.alert(
         'خطأ',
-        'تعذر إرسال الهدية'
+        'تعذر إرسال الهدية.'
       );
+
     }
+
   };
 
 
-  // --------------------------------
+  // ==================================
   // متجر العملات
-  // --------------------------------
+  // ==================================
 
   const openStore = () => {
 
@@ -850,12 +1066,13 @@ export default function HomeScreen({ navigation }) {
       'متجر العملات 🪙',
       'المتجر تجريبي حاليًا.\nسيتم إضافة الشحن الحقيقي لاحقًا.'
     );
+
   };
 
 
-  // --------------------------------
+  // ==================================
   // متجر VIP
-  // --------------------------------
+  // ==================================
 
   const openVIP = () => {
 
@@ -863,12 +1080,13 @@ export default function HomeScreen({ navigation }) {
       'متجر VIP 👑',
       'سيتم إضافة مستويات VIP ومزاياها لاحقًا.'
     );
+
   };
 
 
-  // --------------------------------
+  // ==================================
   // تسجيل الخروج
-  // --------------------------------
+  // ==================================
 
   const logout = async () => {
 
@@ -876,23 +1094,33 @@ export default function HomeScreen({ navigation }) {
 
       await auth.signOut();
 
+
       navigation.replace(
         'Login'
       );
 
+
     } catch (error) {
+
+      console.log(
+        'Logout error:',
+        error
+      );
+
 
       Alert.alert(
         'خطأ',
-        'تعذر تسجيل الخروج'
+        'تعذر تسجيل الخروج.'
       );
+
     }
+
   };
 
 
-  // --------------------------------
-  // تحميل
-  // --------------------------------
+  // ==================================
+  // شاشة التحميل
+  // ==================================
 
   if (loading) {
 
@@ -908,6 +1136,7 @@ export default function HomeScreen({ navigation }) {
           size="large"
         />
 
+
         <Text
           style={
             styles.loadingText
@@ -917,13 +1146,15 @@ export default function HomeScreen({ navigation }) {
         </Text>
 
       </View>
+
     );
+
   }
 
 
-  // --------------------------------
-  // الواجهة
-  // --------------------------------
+  // ==================================
+  // الواجهة الرئيسية
+  // ==================================
 
   return (
 
@@ -941,6 +1172,7 @@ export default function HomeScreen({ navigation }) {
           false
         }
       >
+
 
         {/* الحساب */}
 
@@ -998,6 +1230,7 @@ export default function HomeScreen({ navigation }) {
             >
               {username}
             </Text>
+
 
             <Text
               style={
@@ -1078,6 +1311,7 @@ export default function HomeScreen({ navigation }) {
             >
               رصيد العملات
             </Text>
+
 
             <Text
               style={
@@ -1200,6 +1434,7 @@ export default function HomeScreen({ navigation }) {
               ➕
             </Text>
 
+
             <Text
               style={
                 styles.menuText
@@ -1232,6 +1467,7 @@ export default function HomeScreen({ navigation }) {
                 : '🔇'}
             </Text>
 
+
             <Text
               style={
                 styles.menuText
@@ -1262,6 +1498,7 @@ export default function HomeScreen({ navigation }) {
               👑
             </Text>
 
+
             <Text
               style={
                 styles.menuText
@@ -1280,7 +1517,7 @@ export default function HomeScreen({ navigation }) {
             onPress={() =>
               Alert.alert(
                 'الهدايا 🎁',
-                'اختر الهدية من قسم الهدايا بالأسفل'
+                'اختر الهدية من قسم الهدايا بالأسفل.'
               )
             }
           >
@@ -1292,6 +1529,7 @@ export default function HomeScreen({ navigation }) {
             >
               🎁
             </Text>
+
 
             <Text
               style={
@@ -1365,7 +1603,15 @@ export default function HomeScreen({ navigation }) {
                       styles.roomIcon
                     }
                   >
-                    🎙️
+
+                    <Text
+                      style={
+                        styles.roomIconText
+                      }
+                    >
+                      🎙️
+                    </Text>
+
                   </View>
 
 
@@ -1384,6 +1630,7 @@ export default function HomeScreen({ navigation }) {
                         'غرفة صوتية'}
                     </Text>
 
+
                     <Text
                       style={
                         styles.roomDetails
@@ -1391,6 +1638,7 @@ export default function HomeScreen({ navigation }) {
                     >
                       👤 {room.users || 0} مستخدم
                     </Text>
+
 
                     {room.roomNumber && (
 
@@ -1449,6 +1697,7 @@ export default function HomeScreen({ navigation }) {
               styles.giftsGrid
             }
           >
+
 
             <TouchableOpacity
               style={
@@ -1631,7 +1880,6 @@ export default function HomeScreen({ navigation }) {
 
         </TouchableOpacity>
 
-
       </ScrollView>
 
 
@@ -1641,7 +1889,9 @@ export default function HomeScreen({ navigation }) {
         visible={
           editVisible
         }
-        transparent
+        transparent={
+          true
+        }
         animationType="fade"
         onRequestClose={() =>
           setEditVisible(
@@ -1692,7 +1942,9 @@ export default function HomeScreen({ navigation }) {
               }
               placeholder="اكتب اسم الحساب"
               textAlign="right"
-              maxLength={30}
+              maxLength={
+                30
+              }
             />
 
 
@@ -1752,7 +2004,9 @@ export default function HomeScreen({ navigation }) {
       </Modal>
 
     </View>
+
   );
+
 }
 
 
@@ -2005,6 +2259,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#eeeeee',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  roomIconText: {
     fontSize: 24,
   },
 
@@ -2125,7 +2382,6 @@ const styles = StyleSheet.create({
   modalButtons: {
     flexDirection: 'row',
     marginTop: 20,
-    gap: 10,
   },
 
   cancelButton: {
@@ -2134,6 +2390,7 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     paddingVertical: 13,
     alignItems: 'center',
+    marginRight: 5,
   },
 
   cancelText: {
@@ -2146,6 +2403,7 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     paddingVertical: 13,
     alignItems: 'center',
+    marginLeft: 5,
   },
 
   saveText: {
