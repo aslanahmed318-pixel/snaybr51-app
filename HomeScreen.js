@@ -38,7 +38,6 @@ import {
 
 import GiftAnimation from './GiftAnimation';
 
-
 export default function HomeScreen({ navigation }) {
 
   const [loading, setLoading] = useState(true);
@@ -61,6 +60,7 @@ export default function HomeScreen({ navigation }) {
   const [micOn, setMicOn] =
     useState(true);
 
+  // الغرف العامة
   const [rooms, setRooms] =
     useState([]);
 
@@ -73,10 +73,7 @@ export default function HomeScreen({ navigation }) {
   const [uploadingImage, setUploadingImage] =
     useState(false);
 
-  // ================================
   // تأثير الهدية
-  // ================================
-
   const [giftVisible, setGiftVisible] =
     useState(false);
 
@@ -87,9 +84,9 @@ export default function HomeScreen({ navigation }) {
     });
 
 
-  // ================================
-  // تحميل الحساب والغرف
-  // ================================
+  // ==================================
+  // تحميل الحساب والغرف العامة
+  // ==================================
 
   useEffect(() => {
 
@@ -126,11 +123,13 @@ export default function HomeScreen({ navigation }) {
         }
 
 
+        // ==================================
+        // الغرف العامة
+        // ==================================
+
         const roomsRef =
           collection(
             db,
-            'users',
-            currentUser.uid,
             'rooms'
           );
 
@@ -152,6 +151,22 @@ export default function HomeScreen({ navigation }) {
                   })
                 );
 
+              // ترتيب الأحدث أولاً
+              loadedRooms.sort(
+                (a, b) => {
+
+                  const timeA =
+                    a.createdAt?.seconds ||
+                    0;
+
+                  const timeB =
+                    b.createdAt?.seconds ||
+                    0;
+
+                  return timeB - timeA;
+                }
+              );
+
               setRooms(
                 loadedRooms
               );
@@ -160,7 +175,7 @@ export default function HomeScreen({ navigation }) {
             (error) => {
 
               console.log(
-                'Rooms listener error:',
+                'Public rooms listener error:',
                 error
               );
 
@@ -205,9 +220,9 @@ export default function HomeScreen({ navigation }) {
   }, []);
 
 
-  // ================================
+  // ==================================
   // إنشاء ID
-  // ================================
+  // ==================================
 
   const generateUserId = () => {
 
@@ -282,9 +297,9 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ================================
+  // ==================================
   // تحميل المستخدم
-  // ================================
+  // ==================================
 
   const loadUser = async () => {
 
@@ -507,9 +522,9 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ================================
+  // ==================================
   // اختيار الصورة
-  // ================================
+  // ==================================
 
   const pickAvatar = async () => {
 
@@ -587,9 +602,9 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ================================
+  // ==================================
   // رفع الصورة
-  // ================================
+  // ==================================
 
   const uploadAvatar = async (
     imageUri
@@ -689,9 +704,9 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ================================
+  // ==================================
   // حفظ الاسم
-  // ================================
+  // ==================================
 
   const saveProfile = async () => {
 
@@ -781,9 +796,9 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ================================
+  // ==================================
   // البحث عن مستخدم
-  // ================================
+  // ==================================
 
   const searchUser = async () => {
 
@@ -873,9 +888,9 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ================================
-  // إنشاء غرفة
-  // ================================
+  // ==================================
+  // إنشاء غرفة عامة
+  // ==================================
 
   const createRoom = async () => {
 
@@ -886,7 +901,13 @@ export default function HomeScreen({ navigation }) {
 
 
       if (!currentUser) {
+
+        navigation.replace(
+          'Login'
+        );
+
         return;
+
       }
 
 
@@ -910,8 +931,17 @@ export default function HomeScreen({ navigation }) {
         ownerName:
           username,
 
+        ownerAvatar:
+          avatar || '',
+
         users:
           1,
+
+        maxUsers:
+          100,
+
+        isActive:
+          true,
 
         createdAt:
           serverTimestamp(),
@@ -919,12 +949,15 @@ export default function HomeScreen({ navigation }) {
       };
 
 
+      // ==================================
+      // مهم:
+      // إنشاء الغرفة داخل rooms العامة
+      // ==================================
+
       const roomRef =
         doc(
           collection(
             db,
-            'users',
-            currentUser.uid,
             'rooms'
           )
         );
@@ -938,14 +971,14 @@ export default function HomeScreen({ navigation }) {
 
       Alert.alert(
         'تم إنشاء الغرفة 🎙️',
-        `تم إنشاء ${room.name}\nرقم الغرفة: ${roomNumber}`
+        `تم إنشاء ${room.name}\nرقم الغرفة: ${roomNumber}\n\nالغرفة أصبحت ظاهرة للمستخدمين.`
       );
 
 
     } catch (error) {
 
       console.log(
-        'Create room error:',
+        'Create public room error:',
         error
       );
 
@@ -960,9 +993,9 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ================================
+  // ==================================
   // دخول الغرفة
-  // ================================
+  // ==================================
 
   const enterRoom = (room) => {
 
@@ -972,15 +1005,15 @@ export default function HomeScreen({ navigation }) {
         room.users || 0
       }\n\nرقم الغرفة: ${
         room.roomNumber || 'غير محدد'
-      }`
+      }\n\nسيتم ربط الدخول الصوتي الحقيقي بـ Agora في الخطوة التالية.`
     );
 
   };
 
 
-  // ================================
+  // ==================================
   // إرسال الهدية + تشغيل التأثير
-  // ================================
+  // ==================================
 
   const sendGift = async (
     giftName,
@@ -1033,7 +1066,6 @@ export default function HomeScreen({ navigation }) {
       );
 
 
-      // تجهيز الهدية
       setActiveGift({
         icon:
           giftIcon,
@@ -1042,7 +1074,6 @@ export default function HomeScreen({ navigation }) {
       });
 
 
-      // تشغيل التأثير
       setGiftVisible(
         true
       );
@@ -1066,9 +1097,9 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ================================
+  // ==================================
   // انتهاء تأثير الهدية
-  // ================================
+  // ==================================
 
   const finishGiftAnimation = () => {
 
@@ -1079,9 +1110,9 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ================================
+  // ==================================
   // متجر العملات
-  // ================================
+  // ==================================
 
   const openStore = () => {
 
@@ -1093,9 +1124,9 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ================================
+  // ==================================
   // متجر VIP
-  // ================================
+  // ==================================
 
   const openVIP = () => {
 
@@ -1107,9 +1138,9 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ================================
+  // ==================================
   // تسجيل الخروج
-  // ================================
+  // ==================================
 
   const logout = async () => {
 
@@ -1139,9 +1170,9 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ================================
+  // ==================================
   // تحميل
-  // ================================
+  // ==================================
 
   if (loading) {
 
@@ -1172,9 +1203,9 @@ export default function HomeScreen({ navigation }) {
   }
 
 
-  // ================================
+  // ==================================
   // الواجهة
-  // ================================
+  // ==================================
 
   return (
 
@@ -1563,7 +1594,9 @@ export default function HomeScreen({ navigation }) {
         </View>
 
 
-        {/* الغرف */}
+        {/* ==================================
+            الغرف العامة
+        ================================== */}
 
         <View
           style={
@@ -1576,7 +1609,7 @@ export default function HomeScreen({ navigation }) {
               styles.sectionTitle
             }
           >
-            🎙️ الغرف
+            🎙️ الغرف العامة
           </Text>
 
 
@@ -1594,6 +1627,15 @@ export default function HomeScreen({ navigation }) {
                 }
               >
                 لا توجد غرف حاليًا
+              </Text>
+
+
+              <Text
+                style={
+                  styles.emptySubText
+                }
+              >
+                أنشئ أول غرفة لتظهر للجميع
               </Text>
 
             </View>
@@ -1623,13 +1665,29 @@ export default function HomeScreen({ navigation }) {
                     }
                   >
 
-                    <Text
-                      style={
-                        styles.roomIconText
-                      }
-                    >
-                      🎙️
-                    </Text>
+                    {room.ownerAvatar ? (
+
+                      <Image
+                        source={{
+                          uri:
+                            room.ownerAvatar,
+                        }}
+                        style={
+                          styles.roomAvatar
+                        }
+                      />
+
+                    ) : (
+
+                      <Text
+                        style={
+                          styles.roomIconText
+                        }
+                      >
+                        🎙️
+                      </Text>
+
+                    )}
 
                   </View>
 
@@ -1656,6 +1714,18 @@ export default function HomeScreen({ navigation }) {
                       }
                     >
                       👤 {room.users || 0} مستخدم
+                    </Text>
+
+
+                    <Text
+                      style={
+                        styles.roomDetails
+                      }
+                    >
+                      👑 المالك: {
+                        room.ownerName ||
+                        'غير معروف'
+                      }
                     </Text>
 
 
@@ -1905,9 +1975,7 @@ export default function HomeScreen({ navigation }) {
       </ScrollView>
 
 
-      {/* ================================
-          تأثير الهدية
-      ================================= */}
+      {/* تأثير الهدية */}
 
       <GiftAnimation
         visible={
@@ -1931,9 +1999,7 @@ export default function HomeScreen({ navigation }) {
       />
 
 
-      {/* ================================
-          تعديل الحساب
-      ================================= */}
+      {/* تعديل الحساب */}
 
       <Modal
         visible={
@@ -2272,6 +2338,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 
+  emptySubText: {
+    color: '#aaaaaa',
+    fontSize: 13,
+    marginTop: 6,
+  },
+
   roomCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2288,6 +2360,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#eeeeee',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+
+  roomAvatar: {
+    width: '100%',
+    height: '100%',
   },
 
   roomIconText: {
