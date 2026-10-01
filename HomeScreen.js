@@ -36,6 +36,8 @@ import {
   getDownloadURL,
 } from 'firebase/storage';
 
+import GiftAnimation from './GiftAnimation';
+
 
 export default function HomeScreen({ navigation }) {
 
@@ -71,10 +73,23 @@ export default function HomeScreen({ navigation }) {
   const [uploadingImage, setUploadingImage] =
     useState(false);
 
+  // ================================
+  // تأثير الهدية
+  // ================================
 
-  // ==================================
+  const [giftVisible, setGiftVisible] =
+    useState(false);
+
+  const [activeGift, setActiveGift] =
+    useState({
+      icon: '🎁',
+      name: 'هدية',
+    });
+
+
+  // ================================
   // تحميل الحساب والغرف
-  // ==================================
+  // ================================
 
   useEffect(() => {
 
@@ -98,7 +113,6 @@ export default function HomeScreen({ navigation }) {
         }
 
 
-        // تحميل بيانات المستخدم
         const userLoaded =
           await loadUser();
 
@@ -112,8 +126,6 @@ export default function HomeScreen({ navigation }) {
         }
 
 
-        // تحميل الغرف
-        // بدون orderBy لتجنب مشاكل Firestore أثناء الاختبار
         const roomsRef =
           collection(
             db,
@@ -143,6 +155,7 @@ export default function HomeScreen({ navigation }) {
               setRooms(
                 loadedRooms
               );
+
             },
             (error) => {
 
@@ -151,7 +164,6 @@ export default function HomeScreen({ navigation }) {
                 error
               );
 
-              // الخطأ في الغرف لا يغلق التطبيق
               if (mounted) {
                 setRooms([]);
               }
@@ -173,6 +185,7 @@ export default function HomeScreen({ navigation }) {
         }
 
       }
+
     };
 
 
@@ -192,9 +205,9 @@ export default function HomeScreen({ navigation }) {
   }, []);
 
 
-  // ==================================
-  // إنشاء ID مستخدم
-  // ==================================
+  // ================================
+  // إنشاء ID
+  // ================================
 
   const generateUserId = () => {
 
@@ -269,9 +282,9 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ==================================
-  // تحميل بيانات المستخدم
-  // ==================================
+  // ================================
+  // تحميل المستخدم
+  // ================================
 
   const loadUser = async () => {
 
@@ -283,11 +296,9 @@ export default function HomeScreen({ navigation }) {
 
       if (!currentUser) {
 
-        if (navigation) {
-          navigation.replace(
-            'Login'
-          );
-        }
+        navigation.replace(
+          'Login'
+        );
 
         return false;
 
@@ -315,15 +326,19 @@ export default function HomeScreen({ navigation }) {
           userSnap.data();
 
 
-        setUsername(
+        const savedUsername =
           data.username ||
-          'مستخدم جديد'
+          currentUser.displayName ||
+          'مستخدم جديد';
+
+
+        setUsername(
+          savedUsername
         );
 
 
         setNewUsername(
-          data.username ||
-          'مستخدم جديد'
+          savedUsername
         );
 
 
@@ -346,28 +361,28 @@ export default function HomeScreen({ navigation }) {
         );
 
 
-        // إذا كانت بعض البيانات ناقصة
         const missingData = {};
 
 
         if (
           typeof data.coins !== 'number'
         ) {
+
           missingData.coins =
             2000000;
+
         }
 
 
         if (!data.username) {
+
           missingData.username =
-            currentUser.displayName ||
-            'مستخدم جديد';
+            savedUsername;
+
         }
 
 
-        if (
-          !data.userId
-        ) {
+        if (!data.userId) {
 
           const generatedId =
             await createUniqueUserId();
@@ -388,21 +403,10 @@ export default function HomeScreen({ navigation }) {
           ).length > 0
         ) {
 
-          try {
-
-            await updateDoc(
-              userRef,
-              missingData
-            );
-
-          } catch (updateError) {
-
-            console.log(
-              'Missing data update error:',
-              updateError
-            );
-
-          }
+          await updateDoc(
+            userRef,
+            missingData
+          );
 
         }
 
@@ -417,7 +421,7 @@ export default function HomeScreen({ navigation }) {
         await createUniqueUserId();
 
 
-      const newUsername =
+      const newUserName =
         currentUser.displayName ||
         'مستخدم جديد';
 
@@ -428,7 +432,7 @@ export default function HomeScreen({ navigation }) {
           currentUser.uid,
 
         username:
-          newUsername,
+          newUserName,
 
         email:
           currentUser.email ||
@@ -456,12 +460,12 @@ export default function HomeScreen({ navigation }) {
 
 
       setUsername(
-        newUsername
+        newUserName
       );
 
 
       setNewUsername(
-        newUsername
+        newUserName
       );
 
 
@@ -492,7 +496,7 @@ export default function HomeScreen({ navigation }) {
 
       Alert.alert(
         'خطأ',
-        'حدث خطأ أثناء تحميل الحساب.\nتحقق من اتصال Firebase.'
+        'حدث خطأ أثناء تحميل الحساب.'
       );
 
 
@@ -503,9 +507,9 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ==================================
-  // اختيار صورة الحساب
-  // ==================================
+  // ================================
+  // اختيار الصورة
+  // ================================
 
   const pickAvatar = async () => {
 
@@ -523,7 +527,7 @@ export default function HomeScreen({ navigation }) {
 
         Alert.alert(
           'صلاحية مطلوبة',
-          'اسمح للتطبيق بالوصول إلى الصور لاختيار صورة الحساب.'
+          'اسمح للتطبيق بالوصول إلى الصور.'
         );
 
         return;
@@ -561,12 +565,8 @@ export default function HomeScreen({ navigation }) {
       }
 
 
-      const imageUri =
-        result.assets[0].uri;
-
-
       await uploadAvatar(
-        imageUri
+        result.assets[0].uri
       );
 
     } catch (error) {
@@ -587,9 +587,9 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ==================================
+  // ================================
   // رفع الصورة
-  // ==================================
+  // ================================
 
   const uploadAvatar = async (
     imageUri
@@ -674,7 +674,7 @@ export default function HomeScreen({ navigation }) {
 
       Alert.alert(
         'خطأ',
-        'تعذر حفظ صورة الحساب.\nتحقق من إعدادات Firebase Storage.'
+        'تعذر حفظ صورة الحساب.'
       );
 
 
@@ -689,9 +689,9 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ==================================
-  // حفظ اسم الحساب
-  // ==================================
+  // ================================
+  // حفظ الاسم
+  // ================================
 
   const saveProfile = async () => {
 
@@ -781,9 +781,9 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ==================================
+  // ================================
   // البحث عن مستخدم
-  // ==================================
+  // ================================
 
   const searchUser = async () => {
 
@@ -873,9 +873,9 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ==================================
+  // ================================
   // إنشاء غرفة
-  // ==================================
+  // ================================
 
   const createRoom = async () => {
 
@@ -960,9 +960,9 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ==================================
+  // ================================
   // دخول الغرفة
-  // ==================================
+  // ================================
 
   const enterRoom = (room) => {
 
@@ -978,13 +978,14 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ==================================
-  // إرسال هدية
-  // ==================================
+  // ================================
+  // إرسال الهدية + تشغيل التأثير
+  // ================================
 
   const sendGift = async (
     giftName,
-    price
+    price,
+    giftIcon
   ) => {
 
     if (coins < price) {
@@ -1032,9 +1033,18 @@ export default function HomeScreen({ navigation }) {
       );
 
 
-      Alert.alert(
-        'تم إرسال الهدية 🎁',
-        `${giftName}\nالسعر: ${price.toLocaleString()}\nالرصيد المتبقي: ${newCoins.toLocaleString()}`
+      // تجهيز الهدية
+      setActiveGift({
+        icon:
+          giftIcon,
+        name:
+          giftName,
+      });
+
+
+      // تشغيل التأثير
+      setGiftVisible(
+        true
       );
 
 
@@ -1056,9 +1066,22 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ==================================
+  // ================================
+  // انتهاء تأثير الهدية
+  // ================================
+
+  const finishGiftAnimation = () => {
+
+    setGiftVisible(
+      false
+    );
+
+  };
+
+
+  // ================================
   // متجر العملات
-  // ==================================
+  // ================================
 
   const openStore = () => {
 
@@ -1070,9 +1093,9 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ==================================
+  // ================================
   // متجر VIP
-  // ==================================
+  // ================================
 
   const openVIP = () => {
 
@@ -1084,9 +1107,9 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ==================================
+  // ================================
   // تسجيل الخروج
-  // ==================================
+  // ================================
 
   const logout = async () => {
 
@@ -1094,11 +1117,9 @@ export default function HomeScreen({ navigation }) {
 
       await auth.signOut();
 
-
       navigation.replace(
         'Login'
       );
-
 
     } catch (error) {
 
@@ -1118,9 +1139,9 @@ export default function HomeScreen({ navigation }) {
   };
 
 
-  // ==================================
-  // شاشة التحميل
-  // ==================================
+  // ================================
+  // تحميل
+  // ================================
 
   if (loading) {
 
@@ -1135,7 +1156,6 @@ export default function HomeScreen({ navigation }) {
         <ActivityIndicator
           size="large"
         />
-
 
         <Text
           style={
@@ -1152,9 +1172,9 @@ export default function HomeScreen({ navigation }) {
   }
 
 
-  // ==================================
-  // الواجهة الرئيسية
-  // ==================================
+  // ================================
+  // الواجهة
+  // ================================
 
   return (
 
@@ -1172,7 +1192,6 @@ export default function HomeScreen({ navigation }) {
           false
         }
       >
-
 
         {/* الحساب */}
 
@@ -1698,15 +1717,15 @@ export default function HomeScreen({ navigation }) {
             }
           >
 
-
             <TouchableOpacity
               style={
                 styles.giftButton
               }
               onPress={() =>
                 sendGift(
-                  'وردة 🌹',
-                  100
+                  'وردة',
+                  100,
+                  '🌹'
                 )
               }
             >
@@ -1744,8 +1763,9 @@ export default function HomeScreen({ navigation }) {
               }
               onPress={() =>
                 sendGift(
-                  'قلب ❤️',
-                  500
+                  'قلب',
+                  500,
+                  '❤️'
                 )
               }
             >
@@ -1783,8 +1803,9 @@ export default function HomeScreen({ navigation }) {
               }
               onPress={() =>
                 sendGift(
-                  'تاج 👑',
-                  1000
+                  'تاج',
+                  1000,
+                  '👑'
                 )
               }
             >
@@ -1822,8 +1843,9 @@ export default function HomeScreen({ navigation }) {
               }
               onPress={() =>
                 sendGift(
-                  'ماسة 💎',
-                  5000
+                  'ماسة',
+                  5000,
+                  '💎'
                 )
               }
             >
@@ -1883,7 +1905,35 @@ export default function HomeScreen({ navigation }) {
       </ScrollView>
 
 
-      {/* نافذة تعديل الحساب */}
+      {/* ================================
+          تأثير الهدية
+      ================================= */}
+
+      <GiftAnimation
+        visible={
+          giftVisible
+        }
+        giftIcon={
+          activeGift.icon
+        }
+        giftName={
+          activeGift.name
+        }
+        senderName={
+          username
+        }
+        duration={
+          2200
+        }
+        onFinish={
+          finishGiftAnimation
+        }
+      />
+
+
+      {/* ================================
+          تعديل الحساب
+      ================================= */}
 
       <Modal
         visible={
@@ -2038,9 +2088,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 
-
-  // الحساب
-
   profileCard: {
     backgroundColor: '#ffffff',
     borderRadius: 20,
@@ -2100,9 +2147,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 
-
-  // الصورة
-
   uploadBox: {
     backgroundColor: '#ffffff',
     borderRadius: 15,
@@ -2110,9 +2154,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-
-
-  // العملات
 
   coinsCard: {
     backgroundColor: '#ffffff',
@@ -2149,9 +2190,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 
-
-  // الأقسام
-
   section: {
     backgroundColor: '#ffffff',
     borderRadius: 20,
@@ -2166,9 +2204,6 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     textAlign: 'right',
   },
-
-
-  // البحث
 
   searchRow: {
     flexDirection: 'row',
@@ -2200,9 +2235,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 
-
-  // الخدمات
-
   buttonsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -2229,9 +2261,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
-
-
-  // الغرف
 
   emptyBox: {
     padding: 25,
@@ -2288,9 +2317,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-
-  // الهدايا
-
   giftsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -2321,9 +2347,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 
-
-  // تسجيل الخروج
-
   logoutButton: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
@@ -2337,9 +2360,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
-
-
-  // نافذة التعديل
 
   modalOverlay: {
     flex: 1,
