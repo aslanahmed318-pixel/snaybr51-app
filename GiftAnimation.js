@@ -18,30 +18,25 @@ export default function GiftAnimation({
   onFinish,
 }) {
 
-  const containerOpacity =
-    useRef(
-      new Animated.Value(0)
-    ).current;
+  const opacity = useRef(
+    new Animated.Value(0)
+  ).current;
 
-  const scale =
-    useRef(
-      new Animated.Value(0.4)
-    ).current;
+  const scale = useRef(
+    new Animated.Value(0.4)
+  ).current;
 
-  const translateY =
-    useRef(
-      new Animated.Value(80)
-    ).current;
+  const translateY = useRef(
+    new Animated.Value(80)
+  ).current;
 
-  const glowScale =
-    useRef(
-      new Animated.Value(0.5)
-    ).current;
+  const rotate = useRef(
+    new Animated.Value(0)
+  ).current;
 
-  const glowOpacity =
-    useRef(
-      new Animated.Value(0)
-    ).current;
+  const textOpacity = useRef(
+    new Animated.Value(0)
+  ).current;
 
 
   useEffect(() => {
@@ -51,136 +46,152 @@ export default function GiftAnimation({
     }
 
 
-    // إعادة القيم للبداية
-    containerOpacity.setValue(0);
+    // إعادة ضبط الحركة
+    opacity.setValue(0);
     scale.setValue(0.4);
     translateY.setValue(80);
-    glowScale.setValue(0.5);
-    glowOpacity.setValue(0);
+    rotate.setValue(0);
+    textOpacity.setValue(0);
 
 
     Animated.parallel([
 
-      // ظهور التأثير
-      Animated.timing(
-        containerOpacity,
-        {
-          toValue: 1,
-          duration: 300,
-          easing: Easing.out(
-            Easing.ease
-          ),
-          useNativeDriver: true,
-        }
-      ),
+      Animated.sequence([
 
-      // دخول الهدية
+        Animated.timing(
+          opacity,
+          {
+            toValue: 1,
+            duration: 250,
+            useNativeDriver: true,
+          }
+        ),
+
+        Animated.delay(
+          Math.max(300, duration - 800)
+        ),
+
+        Animated.timing(
+          opacity,
+          {
+            toValue: 0,
+            duration: 350,
+            useNativeDriver: true,
+          }
+        ),
+
+      ]),
+
+
       Animated.spring(
         scale,
         {
           toValue: 1,
           friction: 5,
-          tension: 70,
+          tension: 80,
           useNativeDriver: true,
         }
       ),
 
-      // صعود الهدية
+
       Animated.timing(
         translateY,
         {
           toValue: 0,
-          duration: 600,
+          duration: 500,
           easing: Easing.out(
-            Easing.back(1.2)
+            Easing.back(1.5)
           ),
           useNativeDriver: true,
         }
       ),
 
-      // ظهور الوهج
-      Animated.timing(
-        glowOpacity,
-        {
-          toValue: 1,
-          duration: 350,
-          useNativeDriver: true,
-        }
-      ),
 
-      Animated.timing(
-        glowScale,
-        {
-          toValue: 1,
-          duration: 600,
-          easing: Easing.out(
-            Easing.ease
-          ),
-          useNativeDriver: true,
-        }
-      ),
+      Animated.sequence([
 
-    ]).start();
-
-
-    // نهاية التأثير
-    const timer =
-      setTimeout(() => {
-
-        Animated.parallel([
-
-          Animated.timing(
-            containerOpacity,
-            {
-              toValue: 0,
-              duration: 450,
-              easing: Easing.in(
-                Easing.ease
-              ),
-              useNativeDriver: true,
-            }
-          ),
-
-          Animated.timing(
-            scale,
-            {
-              toValue: 0.7,
-              duration: 450,
-              easing: Easing.in(
-                Easing.ease
-              ),
-              useNativeDriver: true,
-            }
-          ),
-
-          Animated.timing(
-            translateY,
-            {
-              toValue: -40,
-              duration: 450,
-              easing: Easing.in(
-                Easing.ease
-              ),
-              useNativeDriver: true,
-            }
-          ),
-
-        ]).start(() => {
-
-          if (onFinish) {
-            onFinish();
+        Animated.timing(
+          rotate,
+          {
+            toValue: 1,
+            duration: 350,
+            easing: Easing.inOut(
+              Easing.ease
+            ),
+            useNativeDriver: true,
           }
+        ),
 
-        });
+        Animated.timing(
+          rotate,
+          {
+            toValue: -1,
+            duration: 350,
+            easing: Easing.inOut(
+              Easing.ease
+            ),
+            useNativeDriver: true,
+          }
+        ),
 
-      }, Math.max(duration - 500, 700));
+        Animated.timing(
+          rotate,
+          {
+            toValue: 0,
+            duration: 350,
+            easing: Easing.inOut(
+              Easing.ease
+            ),
+            useNativeDriver: true,
+          }
+        ),
+
+      ]),
 
 
-    return () => {
-      clearTimeout(timer);
-    };
+      Animated.sequence([
 
-  }, [visible, duration, onFinish]);
+        Animated.delay(250),
+
+        Animated.timing(
+          textOpacity,
+          {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }
+        ),
+
+        Animated.delay(
+          Math.max(200, duration - 1100)
+        ),
+
+        Animated.timing(
+          textOpacity,
+          {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }
+        ),
+
+      ]),
+
+    ]).start(() => {
+
+      if (onFinish) {
+        onFinish();
+      }
+
+    });
+
+  }, [
+    visible,
+    duration,
+    giftIcon,
+    giftName,
+    senderName,
+    onFinish,
+  ]);
 
 
   if (!visible) {
@@ -188,99 +199,76 @@ export default function GiftAnimation({
   }
 
 
+  const rotateInterpolate =
+    rotate.interpolate({
+      inputRange: [-1, 0, 1],
+      outputRange: [
+        '-8deg',
+        '0deg',
+        '8deg',
+      ],
+    });
+
+
   return (
 
     <View
       pointerEvents="none"
-      style={styles.overlay}
+      style={styles.container}
     >
 
       <Animated.View
         style={[
-          styles.container,
+          styles.card,
           {
-            opacity:
-              containerOpacity,
-
+            opacity,
             transform: [
               {
-                translateY:
-                  translateY,
+                translateY,
               },
               {
-                scale:
-                  scale,
+                scale,
+              },
+              {
+                rotate:
+                  rotateInterpolate,
               },
             ],
           },
         ]}
       >
 
-        {/* الوهج الخلفي */}
-
-        <Animated.View
-          style={[
-            styles.glow,
-            {
-              opacity:
-                glowOpacity,
-
-              transform: [
-                {
-                  scale:
-                    glowScale,
-                },
-              ],
-            },
-          ]}
+        <View
+          style={styles.glow}
         />
 
+        <Text
+          style={styles.giftIcon}
+        >
+          {giftIcon}
+        </Text>
 
-        {/* الهدية */}
 
-        <View
-          style={
-            styles.giftCircle
-          }
+        <Animated.View
+          style={{
+            opacity: textOpacity,
+          }}
         >
 
           <Text
-            style={
-              styles.giftIcon
-            }
-          >
-            {giftIcon}
-          </Text>
-
-        </View>
-
-
-        {/* اسم الهدية */}
-
-        <View
-          style={
-            styles.infoBox
-          }
-        >
-
-          <Text
-            style={
-              styles.giftName
-            }
+            style={styles.giftName}
           >
             {giftName}
           </Text>
 
 
           <Text
-            style={
-              styles.senderText
-            }
+            style={styles.senderText}
           >
-            أرسلها {senderName}
+            🎁 أرسلها {senderName}
           </Text>
 
-        </View>
+        </Animated.View>
 
       </Animated.View>
 
@@ -291,153 +279,103 @@ export default function GiftAnimation({
 }
 
 
-// ==========================================
-// Styles
-// ==========================================
+const styles =
+  StyleSheet.create({
 
-const styles = StyleSheet.create({
+    container: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
 
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
 
-    alignItems: 'center',
-    justifyContent: 'center',
+      zIndex: 9999,
 
-    zIndex: 9999,
-
-    elevation: 9999,
-  },
-
-
-  container: {
-    alignItems: 'center',
-    justifyContent: 'center',
-
-    minWidth: 190,
-  },
-
-
-  glow: {
-    position: 'absolute',
-
-    width: 190,
-    height: 190,
-
-    borderRadius: 95,
-
-    backgroundColor:
-      'rgba(255,215,0,0.18)',
-
-    shadowColor:
-      '#FFD700',
-
-    shadowOffset: {
-      width: 0,
-      height: 0,
+      elevation: 9999,
     },
 
-    shadowOpacity: 0.9,
 
-    shadowRadius: 35,
+    card: {
+      width: 230,
+      minHeight: 190,
 
-    elevation: 20,
-  },
+      borderRadius: 30,
 
+      backgroundColor:
+        'rgba(20,20,30,0.94)',
 
-  giftCircle: {
-    width: 125,
-    height: 125,
+      borderWidth: 2,
+      borderColor:
+        'rgba(255,215,90,0.8)',
 
-    borderRadius: 62.5,
+      alignItems: 'center',
+      justifyContent: 'center',
 
-    backgroundColor:
-      'rgba(255,255,255,0.96)',
+      paddingVertical: 25,
+      paddingHorizontal: 20,
 
-    alignItems: 'center',
-    justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 8,
+      },
+      shadowOpacity: 0.35,
+      shadowRadius: 15,
 
-    borderWidth: 3,
+      elevation: 15,
 
-    borderColor:
-      '#FFD700',
-
-    shadowColor:
-      '#000000',
-
-    shadowOffset: {
-      width: 0,
-      height: 8,
+      overflow: 'hidden',
     },
 
-    shadowOpacity: 0.25,
 
-    shadowRadius: 15,
+    glow: {
+      position: 'absolute',
 
-    elevation: 12,
-  },
+      width: 170,
+      height: 170,
 
+      borderRadius: 85,
 
-  giftIcon: {
-    fontSize: 62,
-
-    textAlign: 'center',
-  },
-
-
-  infoBox: {
-    marginTop: 15,
-
-    minWidth: 180,
-
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-
-    borderRadius: 16,
-
-    backgroundColor:
-      'rgba(20,20,20,0.90)',
-
-    alignItems: 'center',
-
-    shadowColor:
-      '#000000',
-
-    shadowOffset: {
-      width: 0,
-      height: 4,
+      backgroundColor:
+        'rgba(255,200,50,0.10)',
     },
 
-    shadowOpacity: 0.25,
 
-    shadowRadius: 8,
+    giftIcon: {
+      fontSize: 72,
 
-    elevation: 8,
-  },
+      marginBottom: 10,
 
-
-  giftName: {
-    color: '#FFD700',
-
-    fontSize: 19,
-
-    fontWeight: 'bold',
-
-    textAlign: 'center',
-  },
+      textAlign: 'center',
+    },
 
 
-  senderText: {
-    color: '#FFFFFF',
+    giftName: {
+      color: '#ffffff',
 
-    fontSize: 13,
+      fontSize: 21,
 
-    marginTop: 4,
+      fontWeight: 'bold',
 
-    textAlign: 'center',
-  },
+      textAlign: 'center',
 
-});
+      marginTop: 5,
+    },
+
+
+    senderText: {
+      color: '#ffd75a',
+
+      fontSize: 14,
+
+      fontWeight: '600',
+
+      textAlign: 'center',
+
+      marginTop: 8,
+    },
+
+  });
