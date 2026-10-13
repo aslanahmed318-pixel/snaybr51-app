@@ -29,35 +29,28 @@ export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
-  const [uniqueId, setUniqueId] = useState('');
+  const [userId, setUserId] = useState('');
   const [loading, setLoading] = useState(false);
 
   const register = async () => {
-    if (
-      !email.trim() ||
-      !password ||
-      !username.trim() ||
-      !uniqueId.trim()
-    ) {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanUsername = username.trim();
+    const cleanId = userId.trim().toLowerCase();
+
+    if (!cleanEmail || !password || !cleanUsername || !cleanId) {
       Alert.alert('تنبيه', 'يرجى تعبئة جميع الحقول');
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert(
-        'كلمة المرور',
-        'يجب أن تكون كلمة المرور 6 أحرف أو أكثر'
-      );
+      Alert.alert('كلمة المرور', 'يجب أن تكون 6 أحرف أو أكثر');
       return;
     }
 
-    const cleanId = uniqueId.trim().toLowerCase();
-
-    // السماح بالحروف والأرقام و _
-    if (!/^[a-z0-9_]+$/.test(cleanId)) {
+    if (!/^[a-z0-9_]{3,20}$/.test(cleanId)) {
       Alert.alert(
         'ID غير صالح',
-        'استخدم الحروف الإنجليزية والأرقام والرمز _ فقط'
+        'استخدم 3 إلى 20 حرفًا إنجليزيًا أو رقمًا أو الرمز _ فقط'
       );
       return;
     }
@@ -65,73 +58,66 @@ export default function RegisterScreen({ navigation }) {
     try {
       setLoading(true);
 
-      // التأكد أن الـ ID غير مستخدم
+      // التحقق من أن المعرّف غير مستخدم.
+      // قد تتطلب هذه العملية تعديلًا آمنًا لقواعد Firestore.
       const idQuery = query(
         collection(db, 'users'),
-        where('uniqueId', '==', cleanId)
+        where('userId', '==', cleanId)
       );
 
       const idSnapshot = await getDocs(idQuery);
 
       if (!idSnapshot.empty) {
-        Alert.alert(
-          'ID مستخدم',
-          'هذا الـ ID موجود مسبقًا، اختر ID آخر'
-        );
-        setLoading(false);
+        Alert.alert('ID مستخدم', 'اختر معرّفًا آخر');
         return;
       }
 
-      // إنشاء حساب Firebase
-      const userCredential =
-        await createUserWithEmailAndPassword(
-          auth,
-          email.trim(),
-          password
-        );
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        cleanEmail,
+        password
+      );
 
       const user = userCredential.user;
 
-      // إنشاء بيانات المستخدم في Firestore
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
-        uniqueId: cleanId,
-        username: username.trim(),
-        photoURL: '',
+        userId: cleanId,
+        username: cleanUsername,
+        avatar: '',
         coins: 2000000,
         vipLevel: 0,
+        role: 'user',
         createdAt: serverTimestamp(),
       });
 
       Alert.alert(
         'تم إنشاء الحساب 🎉',
-        `مرحبًا ${username.trim()}`
+        `مرحبًا ${cleanUsername}`
       );
 
-      // الانتقال للرئيسية
       navigation.replace('Home');
     } catch (error) {
-      console.log(error);
+      console.log('Register error:', error.code, error.message);
 
       if (error.code === 'auth/email-already-in-use') {
-        Alert.alert(
-          'البريد مستخدم',
-          'هذا البريد الإلكتروني مسجل مسبقًا'
-        );
+        Alert.alert('البريد مستخدم', 'هذا البريد مسجل مسبقًا');
       } else if (error.code === 'auth/invalid-email') {
-        Alert.alert(
-          'البريد الإلكتروني',
-          'البريد الإلكتروني غير صحيح'
-        );
+        Alert.alert('البريد الإلكتروني', 'تحقق من صحة البريد');
       } else if (error.code === 'auth/weak-password') {
+        Alert.alert('كلمة المرور', 'كلمة المرور ضعيفة');
+      } else if (
+        error.code === 'permission-denied' ||
+        error.code === 'firestore/permission-denied'
+      ) {
         Alert.alert(
-          'كلمة المرور',
-          'كلمة المرور ضعيفة'
+          'صلاحيات قاعدة البيانات',
+          'قواعد Firestore تمنع هذه العملية. لا تغيّر القواعد عشوائيًا؛ نحتاج مراجعتها.'
         );
       } else {
         Alert.alert(
-          'حدث خطأ',
-          error.message || 'تعذر إنشاء الحساب'
+          'تعذر إنشاء الحساب',
+          'تحقق من اتصال الإنترنت وإعدادات Firebase، ثم راجع سجل الخطأ.'
         );
       }
     } finally {
@@ -141,13 +127,10 @@ export default function RegisterScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-
-      <Text style={styles.title}>
-        إنشاء حساب
-      </Text>
+      <Text style={styles.title}>إنشاء حساب</Text>
 
       <Text style={styles.subtitle}>
-        أنشئ حسابك وابدأ بـ 2,000,000 عملة تجريبية 🪙
+        ابدأ بـ 2,000,000 عملة تجريبية 🪙
       </Text>
 
       <TextInput
@@ -160,9 +143,9 @@ export default function RegisterScreen({ navigation }) {
 
       <TextInput
         style={styles.input}
-        placeholder="ID المميز مثال: user123"
-        value={uniqueId}
-        onChangeText={setUniqueId}
+        placeholder="ID المميز، مثال: user123"
+        value={userId}
+        onChangeText={setUserId}
         autoCapitalize="none"
         maxLength={20}
       />
@@ -185,16 +168,14 @@ export default function RegisterScreen({ navigation }) {
       />
 
       <TouchableOpacity
-        style={styles.button}
+        style={[styles.button, loading && styles.disabledButton]}
         onPress={register}
         disabled={loading}
       >
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.buttonText}>
-            إنشاء الحساب
-          </Text>
+          <Text style={styles.buttonText}>إنشاء الحساب</Text>
         )}
       </TouchableOpacity>
 
@@ -206,7 +187,6 @@ export default function RegisterScreen({ navigation }) {
           لدي حساب بالفعل — تسجيل الدخول
         </Text>
       </TouchableOpacity>
-
     </View>
   );
 }
@@ -218,20 +198,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#f5f5f5',
   },
-
   title: {
     fontSize: 30,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 10,
   },
-
   subtitle: {
     textAlign: 'center',
     color: '#666',
     marginBottom: 25,
   },
-
   input: {
     backgroundColor: '#fff',
     borderWidth: 1,
@@ -241,7 +218,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontSize: 16,
   },
-
   button: {
     backgroundColor: '#222',
     padding: 15,
@@ -249,18 +225,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
   },
-
+  disabledButton: {
+    opacity: 0.6,
+  },
   buttonText: {
     color: '#fff',
     fontSize: 17,
     fontWeight: 'bold',
   },
-
   loginButton: {
     marginTop: 20,
     alignItems: 'center',
   },
-
   loginText: {
     color: '#333',
     fontSize: 15,
