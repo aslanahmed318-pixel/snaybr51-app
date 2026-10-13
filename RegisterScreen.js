@@ -16,10 +16,8 @@ import {
 import {
   doc,
   setDoc,
-  getDocs,
-  query,
-  collection,
-  where,
+  getDoc,
+  writeBatch,
   serverTimestamp,
 } from 'firebase/firestore';
 
@@ -50,24 +48,22 @@ export default function RegisterScreen({ navigation }) {
     if (!/^[a-z0-9_]{3,20}$/.test(cleanId)) {
       Alert.alert(
         'ID غير صالح',
-        'استخدم 3 إلى 20 حرفًا إنجليزيًا أو رقمًا أو الرمز _ فقط'
+        'استخدم 3 إلى 20 حرفًا إنجليزيًا أو رقمًا أو _ فقط'
       );
       return;
     }
 
+    let createdUser = null;
+
     try {
       setLoading(true);
 
-      // التحقق من أن المعرّف غير مستخدم.
-      // قد تتطلب هذه العملية تعديلًا آمنًا لقواعد Firestore.
-      const idQuery = query(
-        collection(db, 'users'),
-        where('userId', '==', cleanId)
-      );
+      const idRef = doc(db, 'userIds', cleanId);
 
-      const idSnapshot = await getDocs(idQuery);
+      // التأكد من أن المعرّف غير محجوز.
+      const idSnapshot = await getDoc(idRef);
 
-      if (!idSnapshot.empty) {
+      if (idSnapshot.exists()) {
         Alert.alert('ID مستخدم', 'اختر معرّفًا آخر');
         return;
       }
@@ -78,18 +74,27 @@ export default function RegisterScreen({ navigation }) {
         password
       );
 
-      const user = userCredential.user;
+      createdUser = userCredential.user;
 
-      await setDoc(doc(db, 'users', user.uid), {
-        uid: user.uid,
+      const batch = writeBatch(db);
+
+      batch.set(doc(db, 'users', createdUser.uid), {
+        uid: createdUser.uid,
         userId: cleanId,
         username: cleanUsername,
+        email: cleanEmail,
         avatar: '',
         coins: 2000000,
-        vipLevel: 0,
-        role: 'user',
         createdAt: serverTimestamp(),
       });
+
+      batch.set(idRef, {
+        uid: createdUser.uid,
+        userId: cleanId,
+        createdAt: serverTimestamp(),
+      });
+
+      await batch.commit();
 
       Alert.alert(
         'تم إنشاء الحساب 🎉',
@@ -112,12 +117,12 @@ export default function RegisterScreen({ navigation }) {
       ) {
         Alert.alert(
           'صلاحيات قاعدة البيانات',
-          'قواعد Firestore تمنع هذه العملية. لا تغيّر القواعد عشوائيًا؛ نحتاج مراجعتها.'
+          'لم تسمح قواعد Firestore بحجز المعرّف أو إنشاء الملف الشخصي. لا تغيّر القواعد عشوائيًا.'
         );
       } else {
         Alert.alert(
           'تعذر إنشاء الحساب',
-          'تحقق من اتصال الإنترنت وإعدادات Firebase، ثم راجع سجل الخطأ.'
+          'حدث خطأ أثناء التسجيل. تحقق من اتصال الإنترنت وإعدادات Firebase.'
         );
       }
     } finally {
