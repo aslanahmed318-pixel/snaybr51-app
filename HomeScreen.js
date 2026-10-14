@@ -295,4 +295,390 @@ export default function HomeScreen({ navigation }) {
       );
     } catch (error) {
       console.log('Search error:', error.code, error.message);
-      Alert.alert('
+      Alert.alert('خطأ', 'تعذر البحث. تحقق من قواعد Firestore.');
+    }
+  };
+
+  const createRoom = async () => {
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      navigation.replace('Login');
+      return;
+    }
+
+    try {
+      const roomNumber = Date.now().toString().slice(-6);
+
+      const roomRef = doc(collection(db, 'rooms'));
+
+      await setDoc(roomRef, {
+        name: `غرفة ${username}`,
+        roomNumber,
+        ownerUid: currentUser.uid,
+        ownerName: username,
+        ownerAvatar: avatar,
+        users: 1,
+        maxUsers: 100,
+        isActive: true,
+        createdAt: serverTimestamp(),
+      });
+
+      Alert.alert('تم إنشاء الغرفة 🎙️', `رقم الغرفة: ${roomNumber}`);
+    } catch (error) {
+      console.log('Create room error:', error.code, error.message);
+      Alert.alert('خطأ', 'تعذر إنشاء الغرفة.');
+    }
+  };
+
+  const sendGift = (giftName, price, giftIcon) => {
+    Alert.alert(
+      'الهدايا قيد التجهيز 🎁',
+      'إرسال الهدايا وخصم العملات متوقف مؤقتًا حتى نجهز نظام رصيد آمن.'
+    );
+  };
+
+  const logout = async () => {
+    try {
+      await auth.signOut();
+      navigation.replace('Login');
+    } catch (error) {
+      Alert.alert('خطأ', 'تعذر تسجيل الخروج.');
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" />
+        <Text style={styles.loadingText}>جاري تحميل الحساب...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.card}>
+          <TouchableOpacity onPress={pickAvatar} style={styles.avatar}>
+            {avatar ? (
+              <Image source={{ uri: avatar }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>👤</Text>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.profileInfo}>
+            <Text style={styles.username}>{username}</Text>
+            <Text style={styles.muted}>ID: {userId || 'غير محدد'}</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.smallButton}
+            onPress={() => {
+              setNewUsername(username);
+              setEditVisible(true);
+            }}
+          >
+            <Text>تعديل</Text>
+          </TouchableOpacity>
+        </View>
+
+        {uploadingImage && (
+          <View style={styles.card}>
+            <ActivityIndicator />
+            <Text>جاري حفظ الصورة...</Text>
+          </View>
+        )}
+
+        <View style={styles.card}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.muted}>رصيد العملات التجريبي</Text>
+            <Text style={styles.coins}>🪙 {coins.toLocaleString()}</Text>
+          </View>
+          <Text style={styles.muted}>الشحن غير مفعّل</Text>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.title}>🔎 البحث عن مستخدم</Text>
+          <TextInput
+            style={styles.input}
+            value={searchId}
+            onChangeText={setSearchId}
+            placeholder="ID مثل user123"
+            autoCapitalize="none"
+          />
+          <TouchableOpacity style={styles.button} onPress={searchUser}>
+            <Text style={styles.buttonText}>بحث</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.grid}>
+          <TouchableOpacity style={styles.menuButton} onPress={createRoom}>
+            <Text style={styles.menuIcon}>🎙️</Text>
+            <Text>إنشاء غرفة</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={() =>
+              Alert.alert('الميكروفون', 'سيتم تفعيل المايك عند ربط Agora.')
+            }
+          >
+            <Text style={styles.menuIcon}>🎤</Text>
+            <Text>الصوت</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={() =>
+              Alert.alert('VIP', 'متجر VIP قيد التجهيز.')
+            }
+          >
+            <Text style={styles.menuIcon}>👑</Text>
+            <Text>متجر VIP</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={() =>
+              Alert.alert('المتجر', 'الشحن غير مفعّل حاليًا.')
+            }
+          >
+            <Text style={styles.menuIcon}>🪙</Text>
+            <Text>المتجر</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.title}>🎙️ الغرف العامة</Text>
+
+          {rooms.length === 0 ? (
+            <Text style={styles.empty}>لا توجد غرف حاليًا.</Text>
+          ) : (
+            rooms.map((room) => (
+              <TouchableOpacity
+                key={room.id}
+                style={styles.room}
+                onPress={() =>
+                  Alert.alert(
+                    'الغرفة',
+                    `${room.name || 'غرفة صوتية'}\nرقم الغرفة: ${
+                      room.roomNumber || 'غير محدد'
+                    }\nالدخول الصوتي لم يُفعّل بعد.`
+                  )
+                }
+              >
+                {room.ownerAvatar ? (
+                  <Image
+                    source={{ uri: room.ownerAvatar }}
+                    style={styles.roomAvatar}
+                  />
+                ) : (
+                  <Text style={styles.menuIcon}>🎙️</Text>
+                )}
+
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.roomName}>
+                    {room.name || 'غرفة صوتية'}
+                  </Text>
+                  <Text style={styles.muted}>
+                    المالك: {room.ownerName || 'غير معروف'}
+                  </Text>
+                  <Text style={styles.muted}>
+                    رقم الغرفة: {room.roomNumber || 'غير محدد'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.title}>🎁 الهدايا التجريبية</Text>
+          <View style={styles.grid}>
+            {[
+              ['🌹', 'وردة', 100],
+              ['❤️', 'قلب', 500],
+              ['👑', 'تاج', 1000],
+              ['💎', 'ماسة', 5000],
+            ].map(([icon, name, price]) => (
+              <TouchableOpacity
+                key={name}
+                style={styles.gift}
+                onPress={() => sendGift(name, price, icon)}
+              >
+                <Text style={styles.menuIcon}>{icon}</Text>
+                <Text>{name}</Text>
+                <Text style={styles.muted}>🪙 {price}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <TouchableOpacity style={styles.logout} onPress={logout}>
+          <Text style={styles.buttonText}>تسجيل الخروج</Text>
+        </TouchableOpacity>
+      </ScrollView>
+
+      <GiftAnimation
+        visible={giftVisible}
+        giftIcon={activeGift.icon}
+        giftName={activeGift.name}
+        senderName={username}
+        duration={2200}
+        onFinish={() => setGiftVisible(false)}
+      />
+
+      <Modal
+        visible={editVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditVisible(false)}
+      >
+        <View style={styles.overlay}>
+          <View style={styles.modal}>
+            <Text style={styles.title}>تعديل الحساب</Text>
+            <TextInput
+              style={styles.input}
+              value={newUsername}
+              onChangeText={setNewUsername}
+              placeholder="اسم الحساب"
+              maxLength={30}
+            />
+
+            <TouchableOpacity style={styles.button} onPress={saveProfile}>
+              <Text style={styles.buttonText}>حفظ</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.smallButton}
+              onPress={() => setEditVisible(false)}
+            >
+              <Text>إلغاء</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#f5f6fa' },
+  content: { padding: 16, paddingBottom: 40 },
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f5f6fa',
+  },
+  loadingText: { marginTop: 12 },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#eee',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: { width: '100%', height: '100%' },
+  avatarText: { fontSize: 30 },
+  profileInfo: { flex: 1 },
+  username: { fontSize: 18, fontWeight: 'bold', textAlign: 'right' },
+  muted: { color: '#777', fontSize: 12, marginTop: 5 },
+  smallButton: {
+    backgroundColor: '#eee',
+    padding: 10,
+    borderRadius: 10,
+  },
+  coins: { fontSize: 22, fontWeight: 'bold', marginTop: 6 },
+  title: {
+    width: '100%',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'right',
+    marginBottom: 8,
+  },
+  input: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 12,
+    padding: 13,
+    backgroundColor: '#fafafa',
+  },
+  button: {
+    backgroundColor: '#222',
+    padding: 13,
+    borderRadius: 12,
+    alignItems: 'center',
+    width: '100%',
+  },
+  buttonText: { color: '#fff', fontWeight: 'bold' },
+  grid: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  menuButton: {
+    width: '48%',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  menuIcon: { fontSize: 28, marginBottom: 6 },
+  empty: { color: '#888', padding: 12 },
+  room: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f7f7f7',
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 8,
+    gap: 12,
+  },
+  roomAvatar: { width: 46, height: 46, borderRadius: 23 },
+  roomName: { fontWeight: 'bold', textAlign: 'right' },
+  gift: {
+    width: '48%',
+    backgroundColor: '#f7f7f7',
+    borderRadius: 14,
+    alignItems: 'center',
+    padding: 14,
+    marginBottom: 8,
+  },
+  logout: {
+    backgroundColor: '#b3261e',
+    padding: 15,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modal: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    gap: 12,
+  },
+});
