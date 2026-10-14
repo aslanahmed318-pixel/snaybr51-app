@@ -11,11 +11,11 @@ import {
 
 import {
   createUserWithEmailAndPassword,
+  deleteUser,
 } from 'firebase/auth';
 
 import {
   doc,
-  setDoc,
   getDoc,
   writeBatch,
   serverTimestamp,
@@ -40,6 +40,11 @@ export default function RegisterScreen({ navigation }) {
       return;
     }
 
+    if (cleanUsername.length < 2) {
+      Alert.alert('اسم المستخدم', 'يجب أن يتكون الاسم من حرفين على الأقل');
+      return;
+    }
+
     if (password.length < 6) {
       Alert.alert('كلمة المرور', 'يجب أن تكون 6 أحرف أو أكثر');
       return;
@@ -48,7 +53,7 @@ export default function RegisterScreen({ navigation }) {
     if (!/^[a-z0-9_]{3,20}$/.test(cleanId)) {
       Alert.alert(
         'ID غير صالح',
-        'استخدم 3 إلى 20 حرفًا إنجليزيًا أو رقمًا أو _ فقط'
+        'استخدم 3 إلى 20 حرفًا إنجليزيًا صغيرًا أو رقمًا أو _ فقط'
       );
       return;
     }
@@ -59,8 +64,6 @@ export default function RegisterScreen({ navigation }) {
       setLoading(true);
 
       const idRef = doc(db, 'userIds', cleanId);
-
-      // التأكد من أن المعرّف غير محجوز.
       const idSnapshot = await getDoc(idRef);
 
       if (idSnapshot.exists()) {
@@ -76,10 +79,11 @@ export default function RegisterScreen({ navigation }) {
 
       createdUser = userCredential.user;
 
+      const uid = createdUser.uid;
       const batch = writeBatch(db);
 
-      batch.set(doc(db, 'users', createdUser.uid), {
-        uid: createdUser.uid,
+      batch.set(doc(db, 'users', uid), {
+        uid,
         userId: cleanId,
         username: cleanUsername,
         email: cleanEmail,
@@ -89,9 +93,16 @@ export default function RegisterScreen({ navigation }) {
       });
 
       batch.set(idRef, {
-        uid: createdUser.uid,
+        uid,
         userId: cleanId,
         createdAt: serverTimestamp(),
+      });
+
+      batch.set(doc(db, 'publicProfiles', uid), {
+        uid,
+        userId: cleanId,
+        username: cleanUsername,
+        avatar: '',
       });
 
       await batch.commit();
@@ -105,6 +116,15 @@ export default function RegisterScreen({ navigation }) {
     } catch (error) {
       console.log('Register error:', error.code, error.message);
 
+      // حذف حساب المصادقة إذا فشل حفظ بيانات التسجيل.
+      if (createdUser) {
+        try {
+          await deleteUser(createdUser);
+        } catch (deleteError) {
+          console.log('Account cleanup error:', deleteError.code);
+        }
+      }
+
       if (error.code === 'auth/email-already-in-use') {
         Alert.alert('البريد مستخدم', 'هذا البريد مسجل مسبقًا');
       } else if (error.code === 'auth/invalid-email') {
@@ -117,12 +137,12 @@ export default function RegisterScreen({ navigation }) {
       ) {
         Alert.alert(
           'صلاحيات قاعدة البيانات',
-          'لم تسمح قواعد Firestore بحجز المعرّف أو إنشاء الملف الشخصي. لا تغيّر القواعد عشوائيًا.'
+          'رفضت قواعد Firestore إحدى عمليات التسجيل. لم يتم تأكيد إنشاء الملف الشخصي.'
         );
       } else {
         Alert.alert(
           'تعذر إنشاء الحساب',
-          'حدث خطأ أثناء التسجيل. تحقق من اتصال الإنترنت وإعدادات Firebase.'
+          'تحقق من الإنترنت وإعدادات Firebase، ثم حاول مجددًا.'
         );
       }
     } finally {
