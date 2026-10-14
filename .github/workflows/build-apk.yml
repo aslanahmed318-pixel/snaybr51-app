@@ -19,7 +19,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -30,8 +29,8 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Install Expo and EAS CLI
-        run: npm install -g expo-cli eas-cli
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
 
       - name: Build Android APK
         run: eas build --platform android --profile preview --non-interactive
