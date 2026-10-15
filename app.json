@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "snaybr51",
+    "slug": "snaybr51",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#fceee3"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.snaybr51.app"
+    }
+  }
+}
