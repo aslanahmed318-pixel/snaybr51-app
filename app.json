@@ -2,6 +2,7 @@
   "expo": {
     "name": "snaybr51",
     "slug": "snaybr51",
+    "owner": "sniper51apps-team",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -13,6 +14,11 @@
     },
     "android": {
       "package": "com.snaybr51.app"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "03585467-6588-4e76-9950-f441a0b13f4d"
+      }
     }
   }
 }
